@@ -156,6 +156,7 @@ function writeHash() {
 
 /* ───────── render ───────── */
 function render() {
+  if (!state.data) return; // a resize can fire before data.json arrives
   const { data } = state;
   const [a, b] = range(state.mode, state.anchor);
   const now = new Date();

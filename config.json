@@ -1,0 +1,98 @@
+{
+  "title": "Motion Design",
+  "notion": {
+    "databaseId": "e39959f0c2d24fe9990cf088db9df874",
+    "url": "https://www.notion.so/appbooster/e39959f0c2d24fe9990cf088db9df874",
+    "properties": {
+      "name": "Name",
+      "status": "Status",
+      "assignees": "Assign",
+      "customers": "Customer",
+      "apps": "App",
+      "types": "Type",
+      "sources": "Source",
+      "resolutions": "Resolution",
+      "priority": "Priority",
+      "deadline": "Deadline",
+      "deliverables": "Deliverables",
+      "direction": "Направление"
+    }
+  },
+  "drive": {
+    "rootUrl": "https://drive.google.com/drive/folders/1JmQvQQLbDoxD41kvvWfR7MXj1kzn20yo",
+    "videoExtensions": [
+      "mp4",
+      "mov",
+      "m4v",
+      "webm",
+      "avi",
+      "mkv"
+    ],
+    "skipFolders": "^(_?old|_?архив\\p{L}*|archive|исходник\\p{L}*|sources?|src|assets?|materials?|материал\\p{L}*|_mat|refs?|references?|референс\\p{L}*|_?tests?|preview|превью|черновик\\p{L}*|drafts?|wip)$",
+    "earliestBeforeTaskDays": 14
+  },
+  "statuses": {
+    "current": [
+      "In progress",
+      "Review",
+      "To do",
+      "Backlog",
+      "Backlog Videos",
+      "Backlog Banners"
+    ],
+    "done": [
+      "Done"
+    ],
+    "order": [
+      "In progress",
+      "Review",
+      "To do",
+      "Backlog",
+      "Backlog Videos",
+      "Backlog Banners",
+      "Done"
+    ]
+  },
+  "people": {
+    "spasova@appbooster.com": "Irina Spasova",
+    "anna.zhitkova@appbooster.com": "Anna Zhitkova",
+    "efimov@appbooster.com": "Andrey Efimov"
+  },
+  "directions": [
+    {
+      "id": "viral",
+      "label": "Виралка",
+      "namePattern": "(^|[^\\p{L}])(lab[ -]?viral|viral|вирал\\p{L}*|тикток|tiktok|уникализац\\p{L}*|ugc)([^\\p{L}]|$)"
+    },
+    {
+      "id": "internal",
+      "label": "Внутренние",
+      "namePattern": "appbooster|appbonus|платформ\\p{L}*|platform|презентац\\p{L}*|(^|[^\\p{L}])преза([^\\p{L}]|$)|корпорат\\p{L}*|лендинг\\p{L}*|landing|сайт\\p{L}*|website|(^|[^\\p{L}])(web|aso)([^\\p{L}]|$)|автоматизац\\p{L}*|lovemobile",
+      "whenNoApp": true
+    },
+    {
+      "id": "lab",
+      "label": "Лаба",
+      "apps": [
+        "PicFlick",
+        "HeyBabe",
+        "AI Telepromer",
+        "Slate AI",
+        "Rankforge",
+        "AIMO Note Taker App"
+      ],
+      "namePattern": "picflick|pickflick|heybabe|rankforge|lootloop|metamagic|planty|flarecast|slate|telepromp|(^|[^\\p{L}])(hb|pf)([^\\p{L}]|$)"
+    },
+    {
+      "id": "buying",
+      "label": "Баинг",
+      "fallbackWhenSource": true,
+      "fallbackWhenApp": true
+    }
+  ],
+  "defaultDirection": "internal",
+  "github": {
+    "repo": "colorindigo/motion-dashboard",
+    "workflow": "sync.yml"
+  }
+}

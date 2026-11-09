@@ -1,0 +1,86 @@
+# Motion Design — дашборд роликов
+
+Задачи моушен-дизайнеров из Notion ([база Motion Design](https://www.notion.so/appbooster/e39959f0c2d24fe9990cf088db9df874)),
+сопоставленные с роликами на Google Drive: сколько роликов сделано за день, неделю, месяц и год,
+всего и по каждому моушену, с разбивкой на баинг, виралку, лабу и внутренние проекты.
+
+**Сайт:** https://colorindigo.github.io/motion-dashboard/
+
+## Как считается
+
+- **Задача ↔ ролики.** У задачи в Notion есть поле `Deliverables` со ссылкой на папку Drive. Синхронизация
+  обходит эту папку со всеми подпапками и берёт видеофайлы (`mp4`, `mov`, `m4v`, `webm`, `avi`, `mkv`).
+  Папки с исходниками, материалами, тестами и черновиками пропускаются (`config.json → drive.skipFolders`).
+- **Ролик** — один креатив во всех форматах: `Name_1080x1920.mp4` и `Name_1920x1080.mp4` — один ролик, два файла.
+- **Дата ролика** — когда файл появился на Drive. По ней ролик попадает в день, неделю, месяц или год.
+- **Моушен** — исполнитель задачи (`Assign`). Если исполнителя нет — владелец файла на Drive (`config.json → people`).
+- **Направление** — по правилам из `config.json → directions`, по порядку: поле «Направление» в Notion (если появится),
+  виралка по названию, внутренние по названию, лаба по приложению, баинг — всё с приложением или источником трафика.
+  Почему задача попала в направление, видно в подсказке в таблице.
+- Если одна папка привязана к нескольким задачам, файл засчитывается один раз — самой подходящей задаче.
+
+## Обновление данных
+
+GitHub Actions (`.github/workflows/sync.yml`) раз в час читает Notion и Drive, собирает `data/data.json`
+и публикует сайт. Кнопка «Обновить» на дашборде открывает страницу workflow: «Run workflow» — и через
+1–2 минуты страница сама подхватит свежие данные. Рядом с кнопкой — время данных.
+
+Пока ключи не заданы, сайт собирается из последних снимков в `snapshots/` и пишет «Данные на …».
+
+## Настройка (один раз)
+
+### 1. Drive: скрипт-посредник
+
+Скрипт обходит папки с правами твоего Google-аккаунта, только на чтение.
+
+1. Открой https://script.google.com/home/projects/create
+2. Замени содержимое `Code.gs` на [`apps-script/Code.gs`](apps-script/Code.gs).
+3. Шестерёнка «Настройки проекта» → включи «Показывать файл манифеста appsscript.json» →
+   замени его содержимое на [`apps-script/appsscript.json`](apps-script/appsscript.json).
+4. Вверху выбери функцию `test` → «Выполнить» → разреши доступ. В журнале должно быть `files=3`.
+5. «Начать развертывание» → «Новое развертывание» → тип «Веб-приложение»,
+   «Запуск от имени: я», «Доступ: все» → «Начать развертывание» → скопируй URL веб-приложения.
+
+URL — это ключ: кто его знает, может читать список файлов в папках по их id. Храни его только в секретах GitHub.
+
+### 2. Notion: интеграция
+
+1. https://www.notion.so/profile/integrations → «New integration» → тип Internal, workspace Appbooster →
+   права: Read content, Read user information. Скопируй «Internal Integration Secret».
+2. Открой базу Motion Design → `•••` → Connections → добавь эту интеграцию.
+
+### 3. Секреты GitHub
+
+```bash
+gh secret set DRIVE_PROXY_URL --repo colorindigo/motion-dashboard
+gh secret set NOTION_TOKEN --repo colorindigo/motion-dashboard
+```
+
+Или вручную: Settings → Secrets and variables → Actions → New repository secret.
+
+### 4. Запуск
+
+Actions → sync → Run workflow. После этого всё обновляется само раз в час.
+
+## Локально
+
+```bash
+DRIVE_PROXY_URL=… NOTION_TOKEN=… node scripts/sync.mjs
+python3 -m http.server 4180
+```
+
+Без переменных `sync.mjs` соберёт данные из снимков. Node 20+, зависимостей нет.
+
+## Файлы
+
+| Путь | Что это |
+|---|---|
+| `index.html`, `assets/` | дашборд, чистые HTML/CSS/JS |
+| `config.json` | id базы и поля Notion, правила направлений, люди, папки-исключения |
+| `scripts/sync.mjs` | синхронизация: Notion + Drive → `data/data.json` |
+| `scripts/build.mjs` | расчёт: задачи, ролики, направления (без сети) |
+| `apps-script/` | скрипт-посредник для Drive |
+| `snapshots/` | последние выгрузки Notion и Drive — запасной источник |
+
+Стиль — по макету «AI-experements / Главная · v1» в Figma: шрифт Outfit (кириллица — Jost), карточки `#EEF0F8` с радиусом 44,
+акцент `#EB4425`, живой маркер `#FEFE02`, фон — градиент `#4A6899 → #CAD3E2`.

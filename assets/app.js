@@ -502,11 +502,15 @@ function renderStatus() {
   const cur = data.tasks.filter((t) => data.config.statuses.current.includes(t.status) && taskOk(t))
     .sort((x, y) => order.indexOf(x.status) - order.indexOf(y.status) || (y.createdAt > x.createdAt ? 1 : -1));
   $('currentCount').textContent = nf.format(cur.length);
+  // Task first and large, its status on the right and small (owner, 9 Nov).
   const rows = cur.slice(0, 3).map((t) => h('div', { class: 'status-row' },
-    h('span', { class: 'k', text: t.status }),
-    h('a', { class: 'v', href: t.url, target: '_blank', rel: 'noopener', text: t.name || 'Без названия' })));
+    h('a', { class: 'v', href: t.url, target: '_blank', rel: 'noopener', text: t.name || 'Без названия' }),
+    h('span', { class: 'k', text: t.status })));
   $('statusRows').replaceChildren(...(rows.length ? rows : [h('p', { class: 'status-empty', text: 'Сейчас задач в работе нет' })]));
-  requestAnimationFrame(() => { for (const v of $('statusRows').querySelectorAll('.v')) v.classList.toggle('fits', v.scrollWidth <= v.clientWidth); });
+  // Fade the end only for names that really overflow; re-measure once web fonts replace the wider fallback.
+  const measure = () => { for (const v of $('statusRows').querySelectorAll('.v')) v.classList.toggle('fits', v.scrollWidth <= v.clientWidth + 1); };
+  requestAnimationFrame(measure);
+  document.fonts?.ready.then(measure);
 }
 
 function statusChip(status) {

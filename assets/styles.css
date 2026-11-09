@@ -151,9 +151,9 @@ img { display: block; }
 .status-more { margin-left: auto; font: var(--t-micro); color: var(--text-on-dark-muted); text-decoration: none; border-bottom: 1px solid rgba(213,220,229,.4); }
 .status-rows { display: flex; flex-direction: column; gap: 34px; padding-top: 52px; }
 .status-row { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; min-width: 0; }
-.status-row .k { font: var(--t-label); letter-spacing: .02em; color: var(--text-on-dark-muted); white-space: nowrap; }
+.status-row .k { font: var(--t-micro); color: var(--text-on-dark-muted); white-space: nowrap; flex-shrink: 0; }
 .status-row .v {
-  font: var(--t-body-m); letter-spacing: .01em; white-space: nowrap; overflow: hidden; min-width: 0;
+  flex: 1 1 auto; font: var(--t-body-m); letter-spacing: .01em; white-space: nowrap; overflow: hidden; min-width: 0;
   text-decoration: none;
   -webkit-mask-image: linear-gradient(to left, transparent 0, #000 48px); mask-image: linear-gradient(to left, transparent 0, #000 48px);
 }

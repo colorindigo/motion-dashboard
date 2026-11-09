@@ -47,7 +47,7 @@ const ids = [...new Set(tasks.map((t) => driveIdFromUrl(t.deliverables)).filter(
 let drive = null, driveSource = 'none';
 if (DRIVE_PROXY_URL) {
   console.log(`drive: Apps Script, ${ids.length} folders`);
-  drive = await fetchDriveRoots({ proxyUrl: DRIVE_PROXY_URL, ids });
+  drive = await fetchDriveRoots({ proxyUrl: DRIVE_PROXY_URL, ids, projectRootId: config.drive.rootId });
   drive.fetchedAt = new Date().toISOString();
   driveSource = 'live';
   await writeJson(path('snapshots/drive-roots.json'), drive);

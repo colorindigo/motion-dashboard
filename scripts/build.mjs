@@ -126,8 +126,20 @@ export function buildData({ tasks, drive, config, meta }) {
     }
   }
 
+  // A link to a whole project folder (straight under the Share root), or to a folder that holds other
+  // tasks' folders, is too broad: it would credit the task with everything the project ever produced.
+  // For such links only files that appeared while the task was open count.
+  const broad = new Set();
+  for (const [rootId, root] of Object.entries(roots)) {
+    if (!root?.ok) continue;
+    if (root.project || (root.parents || []).includes(config.drive.rootId) || (root.contains || []).length) broad.add(rootId);
+  }
+
   const videos = [];
+  const outOfWindow = { before: 0, after: 0 };
   const earliestSlack = (config.drive.earliestBeforeTaskDays ?? 14) * DAY;
+  const afterSlack = (config.drive.broadWindowAfterDays ?? 3) * DAY;
+  const now = Date.now();
   for (const { file, rootId } of candidates.values()) {
     const owners = byFolder.get(rootId) || [];
     if (!owners.length) continue;
@@ -135,7 +147,12 @@ export function buildData({ tasks, drive, config, meta }) {
     // Several tasks share a folder: take the latest task created before the file.
     const sorted = [...owners].sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
     let task = sorted.filter((t) => Date.parse(t.createdAt) - earliestSlack <= created).pop();
-    if (!task) continue; // file predates every task that links this folder
+    if (!task) { outOfWindow.before++; continue; } // file predates every task that links this folder
+    if (broad.has(rootId)) {
+      const open = config.statuses.current.includes(task.status);
+      const end = open ? now : Date.parse(task.editedAt) + afterSlack;
+      if (created > end) { outOfWindow.after++; continue; }
+    }
     const people = task.assignees.length ? task.assignees : [personFromFile(file, config)].filter(Boolean);
     videos.push({
       id: file.id,
@@ -163,6 +180,7 @@ export function buildData({ tasks, drive, config, meta }) {
       t.drive.videos = new Set(list.map((v) => v.k)).size;
       t.drive.firstAt = list.length ? list[list.length - 1].at : null;
       t.drive.lastAt = list.length ? list[0].at : null;
+      t.drive.broad = broad.has(t.drive.id);
     }
   }
 
@@ -170,11 +188,15 @@ export function buildData({ tasks, drive, config, meta }) {
   const checks = {
     tasks: outTasks.length,
     withDriveLink: outTasks.filter((t) => t.drive).length,
+    driveFolders: byFolder.size,
     driveRootsRead: Object.values(roots).filter((r) => r && r.ok !== false).length,
     driveRootsFailed: Object.values(roots).filter((r) => r && r.ok === false).length,
     videosFound: videos.length,
     tasksWithVideos: vByTask.size,
     sharedFolders: [...byFolder.values()].filter((l) => l.length > 1).length,
+    broadFolders: broad.size,
+    filesBeforeTask: outOfWindow.before,
+    filesAfterTaskInBroadFolders: outOfWindow.after,
   };
 
   return {

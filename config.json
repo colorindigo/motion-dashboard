@@ -28,8 +28,10 @@
       "avi",
       "mkv"
     ],
-    "skipFolders": "^(_?old|_?архив\\p{L}*|archive|исходник\\p{L}*|sources?|src|assets?|materials?|материал\\p{L}*|_mat|refs?|references?|референс\\p{L}*|_?tests?|preview|превью|черновик\\p{L}*|drafts?|wip)$",
-    "earliestBeforeTaskDays": 14
+    "skipFolders": "^(_?old|_?архив\\p{L}*|archive|исходник\\p{L}*|sources?|src|assets?|materials?|материал\\p{L}*|_mat|refs?|references?|референс\\p{L}*|_?tests?|preview|превью|черновик\\p{L}*|drafts?|wip|_?n8n\\p{L}*)$",
+    "earliestBeforeTaskDays": 14,
+    "rootId": "1JmQvQQLbDoxD41kvvWfR7MXj1kzn20yo",
+    "broadWindowAfterDays": 3
   },
   "statuses": {
     "current": [

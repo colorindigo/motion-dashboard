@@ -8,7 +8,7 @@ const SEP = `${NBSP}${NBSP}·  `; // rule 29: two non-breaking spaces before the
 const nf = new Intl.NumberFormat('ru-RU');
 const nf1 = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 1 });
 
-const state = { data: null, mode: 'week', anchor: startOfDay(new Date()), direction: '', person: '', tab: 'done', showAll: false };
+const state = { data: null, mode: 'month', anchor: startOfDay(new Date()), direction: '', person: '', tab: 'done', showAll: false };
 
 /* ───────── helpers ───────── */
 function h(tag, attrs = {}, ...kids) {
@@ -274,6 +274,7 @@ function renderChart(a, b) {
   const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: 'img', 'aria-label': `${$('chartTitle').textContent}: столбцы по ${bs.length} отрезкам` });
   for (const f of [0, 0.5, 1]) {
     const v = max * f;
+    if (!Number.isInteger(v)) continue; // clean ticks only
     svg.append(s('text', { class: 'axis', x: 0, y: y(v) + 6, text: nf.format(v) }));
     if (f === 0) svg.append(s('line', { class: 'grid-line', x1: padL, x2: W - padR, y1: y(0) + 0.5, y2: y(0) + 0.5 }));
   }
@@ -494,8 +495,8 @@ function renderChecks() {
     data.sources.notion === 'api' ? `Notion: ${nf.format(c.tasks)} ${plural(c.tasks, W_TASKS)}` : `Notion: снимок от ${fmtStamp(data.sources.notionExportedAt)}, ${nf.format(c.tasks)} ${plural(c.tasks, W_TASKS)}`,
     data.sources.drive === 'none'
       ? 'Drive ещё не подключён'
-      : `Drive: прочитано ${nf.format(c.driveRootsRead)} из ${nf.format(c.withDriveLink)} папок${c.driveRootsFailed ? `, недоступно ${nf.format(c.driveRootsFailed)}` : ''}${data.sources.drive === 'snapshot' ? ` (снимок от ${fmtStamp(data.sources.driveFetchedAt)})` : ''}`,
-    `найдено ${nf.format(c.videosFound)} ${plural(c.videosFound, W_FILES)} в ${nf.format(c.tasksWithVideos)} ${plural(c.tasksWithVideos, W_TASKS)}`,
+      : `Drive: прочитано ${nf.format(c.driveRootsRead)} из ${nf.format(c.driveFolders ?? c.withDriveLink)} папок${c.driveRootsFailed ? `, недоступно ${nf.format(c.driveRootsFailed)}` : ''}${data.sources.drive === 'snapshot' ? ` (снимок от ${fmtStamp(data.sources.driveFetchedAt)})` : ''}`,
+    `найдено ${nf.format(c.videosFound)} ${plural(c.videosFound, W_FILES)} в ${nf.format(c.tasksWithVideos)} ${c.tasksWithVideos % 10 === 1 && c.tasksWithVideos % 100 !== 11 ? 'задаче' : 'задачах'}`,
   ];
   $('checks').textContent = parts.join(SEP) + '. Ролик — один креатив во всех форматах, дата ролика — когда файл появился на Drive.';
 }

@@ -210,7 +210,6 @@ export function buildData({ tasks, drive, config, meta }) {
       // Rules may repeat a direction (project names first, generic words later); show each once, in the owner's order.
       directions: (config.directionOrder || [...new Set(config.directions.map((d) => d.id))])
         .map((id) => ({ id, label: config.directions.find((d) => d.id === id).label })),
-      github: config.github,
     },
     people,
     checks,

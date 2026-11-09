@@ -25,9 +25,9 @@
 
 ## Обновление данных
 
-GitHub Actions (`.github/workflows/sync.yml`) раз в час читает Notion и Drive, собирает `data/data.json`
-и публикует сайт. Кнопка «Обновить» на дашборде открывает страницу workflow: «Run workflow» — и через
-1–2 минуты страница сама подхватит свежие данные. Рядом с кнопкой — время данных.
+GitHub Actions (`.github/workflows/sync.yml`) раз в день, в 07:00 по Москве, читает Notion и Drive, собирает
+`data/data.json` и публикует сайт. Вне расписания синхронизацию можно запустить на GitHub: Actions → sync →
+Run workflow. В шапке дашборда — время данных.
 
 Пока ключи не заданы, сайт собирается из последних снимков в `snapshots/` и пишет «Данные на …».
 
@@ -64,7 +64,7 @@ gh secret set NOTION_TOKEN --repo colorindigo/motion-dashboard
 
 ### 4. Запуск
 
-Actions → sync → Run workflow. После этого всё обновляется само раз в час.
+Actions → sync → Run workflow. После этого всё обновляется само раз в день.
 
 ## Локально
 

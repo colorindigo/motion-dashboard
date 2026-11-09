@@ -104,6 +104,83 @@ function workdays(a, b) {
   return n;
 }
 
+/* ───────── dropdown: MUI Select behaviour ─────────
+   Trigger shows the value with the ArrowDropDown triangle; the menu is an anchored listbox under it.
+   Keyboard as in MUI: ↓/↑/Enter/Space open, ↑↓ Home End move, Enter/Space pick, Esc closes, Tab leaves. */
+const dropdowns = {};
+function dropdown(host, onChange) {
+  const id = host.id;
+  const arrow = s('svg', { class: 'dd-arrow', viewBox: '0 0 24 24', 'aria-hidden': 'true' }, s('path', { d: 'M7 10l5 5 5-5z', fill: 'currentColor' }));
+  const valueEl = h('span', { class: 'dd-value', id: `${id}-value` });
+  const trigger = h('button', { class: 'dd-trigger', type: 'button', id: `${id}-btn`, 'aria-haspopup': 'listbox', 'aria-expanded': 'false', 'aria-labelledby': `${id}-label ${id}-value` }, valueEl, arrow);
+  const menu = h('ul', { class: 'dd-menu', role: 'listbox', id: `${id}-menu`, tabindex: '-1', 'aria-labelledby': `${id}-label`, hidden: true });
+  host.replaceChildren(h('span', { class: 'dd-label', id: `${id}-label`, text: host.dataset.label }), trigger, menu);
+  let options = [], value = '', focus = -1;
+
+  function draw() {
+    const cur = options.find((o) => o.value === value) || options[0];
+    valueEl.textContent = cur ? cur.label : '';
+    host.classList.toggle('active', !!value);
+    menu.replaceChildren(...options.map((o, i) => h('li', {
+      class: 'dd-option' + (i === focus ? ' focused' : ''), role: 'option', id: `${id}-opt-${i}`, 'aria-selected': String(o.value === value),
+      onclick: () => pick(i), onpointermove: () => setFocus(i, false), text: o.label,
+    })));
+  }
+  function setFocus(i, scroll = true) {
+    focus = i;
+    menu.querySelectorAll('.dd-option').forEach((li, j) => li.classList.toggle('focused', j === i));
+    menu.setAttribute('aria-activedescendant', `${id}-opt-${i}`);
+    if (scroll) menu.children[i]?.scrollIntoView({ block: 'nearest' });
+  }
+  function outside(e) { if (!host.contains(e.target)) close(false); }
+  function open() {
+    if (!menu.hidden) return;
+    for (const other of Object.values(dropdowns)) if (other !== api) other.close(false);
+    focus = Math.max(0, options.findIndex((o) => o.value === value));
+    draw();
+    menu.hidden = false;
+    host.classList.add('open');
+    trigger.setAttribute('aria-expanded', 'true');
+    menu.focus({ preventScroll: true });
+    setFocus(focus);
+    document.addEventListener('pointerdown', outside, true);
+  }
+  function close(returnFocus = true) {
+    if (menu.hidden) return;
+    menu.hidden = true;
+    host.classList.remove('open');
+    trigger.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('pointerdown', outside, true);
+    if (returnFocus) trigger.focus();
+  }
+  function pick(i) {
+    const v = options[i]?.value ?? '';
+    close();
+    if (v !== value) { value = v; draw(); onChange(v); }
+  }
+  trigger.addEventListener('click', () => (menu.hidden ? open() : close()));
+  trigger.addEventListener('keydown', (e) => {
+    if (['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(e.key)) { e.preventDefault(); open(); }
+  });
+  menu.addEventListener('keydown', (e) => {
+    const last = options.length - 1;
+    if (e.key === 'ArrowDown') { e.preventDefault(); setFocus(Math.min(last, focus + 1)); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setFocus(Math.max(0, focus - 1)); }
+    else if (e.key === 'Home') { e.preventDefault(); setFocus(0); }
+    else if (e.key === 'End') { e.preventDefault(); setFocus(last); }
+    else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(focus); }
+    else if (e.key === 'Escape') { e.preventDefault(); close(); }
+    else if (e.key === 'Tab') close(false);
+  });
+  const api = {
+    setOptions(list) { options = list; draw(); },
+    setValue(v) { value = v; draw(); },
+    close,
+  };
+  dropdowns[id] = api;
+  return api;
+}
+
 /* ───────── data ───────── */
 async function load(bust = false) {
   const res = await fetch(`data/data.json${bust ? `?t=${Date.now()}` : ''}`, { cache: bust ? 'no-store' : 'default' });
@@ -167,10 +244,8 @@ function render() {
   for (const btn of $('periodTabs').querySelectorAll('button')) btn.setAttribute('aria-selected', String(btn.dataset.mode === state.mode));
   $('periodLabel').textContent = periodLabel(state.mode, state.anchor);
   $('nextPeriod').disabled = shift(state.mode, a, 1) > now;
-  $('directionFilter').value = state.direction;
-  $('personFilter').value = state.person;
-  $('directionFilter').parentElement.classList.toggle('active', !!state.direction);
-  $('personFilter').parentElement.classList.toggle('active', !!state.person);
+  dropdowns.directionFilter.setValue(state.direction);
+  dropdowns.personFilter.setValue(state.person);
 
   // period numbers
   const vids = videosIn(a, b);
@@ -219,7 +294,7 @@ function renderHeroGauge(value, periodStart) {
   const max = niceMax(best || 4);
   const svg = $('heroGauge');
   svg.replaceChildren();
-  const R = 248, cx = -48, cy = 191, A = (43 * Math.PI) / 180;
+  const R = 230, cx = -30, cy = 179, A = (43 * Math.PI) / 180; // arc 22–336, readout stays inside the 380 box
   const pt = (t, r = R) => [cx + r * Math.cos(t), cy + r * Math.sin(t)];
   const [x1, y1] = pt(-A), [x2, y2] = pt(A);
   svg.append(s('path', { class: 'g-arc', d: `M${x1} ${y1} A${R} ${R} 0 0 1 ${x2} ${y2}` }));
@@ -518,47 +593,8 @@ function renderChrome() {
   const d = new Date();
   $('today').textContent = `${cap(fmtWeekday.format(d))}, ${fmtDayMonth.format(d)}`;
   $('dataAge').replaceChildren('данные', h('br'), fmtTime.format(new Date(freshAt)));
-  const dirSel = $('directionFilter');
-  dirSel.replaceChildren(h('option', { value: '', text: 'Все' }), ...data.config.directions.map((x) => h('option', { value: x.id, text: x.label })));
-  const people = data.people.filter(Boolean);
-  $('personFilter').replaceChildren(h('option', { value: '', text: 'Все' }), ...people.map((n) => h('option', { value: n, text: n })));
-}
-
-/* ───────── refresh ───────── */
-let poll = null;
-async function refresh() {
-  const btn = $('refreshBtn');
-  const note = $('refreshNote');
-  const gh = state.data.config.github;
-  btn.disabled = true;
-  const before = state.data.generatedAt;
-  try {
-    const fresh = await load(true);
-    if (fresh.generatedAt !== before) { state.data = fresh; renderChrome(); render(); }
-  } catch { /* keep the frame */ }
-  if (gh?.repo) {
-    const url = `https://github.com/${gh.repo}/actions/workflows/${gh.workflow}`;
-    window.open(url, '_blank', 'noopener');
-    note.replaceChildren('Синхронизация запускается на GitHub: нажми «Run workflow» в открывшейся вкладке. Через 1–2 минуты страница сама подхватит свежие данные. ',
-      h('a', { href: url, target: '_blank', rel: 'noopener', text: 'Открыть ещё раз' }));
-    note.hidden = false;
-    clearInterval(poll);
-    const started = Date.now();
-    poll = setInterval(async () => {
-      if (Date.now() - started > 10 * 60e3) { clearInterval(poll); btn.disabled = false; return; }
-      try {
-        const fresh = await load(true);
-        if (fresh.generatedAt !== state.data.generatedAt) {
-          state.data = fresh; renderChrome(); render();
-          note.textContent = `Данные обновлены: ${fmtStamp(fresh.generatedAt)}`;
-          clearInterval(poll); btn.disabled = false;
-          setTimeout(() => { note.hidden = true; }, 6000);
-        }
-      } catch { /* try again */ }
-    }, 20e3);
-  } else {
-    btn.disabled = false;
-  }
+  dropdowns.directionFilter.setOptions([{ value: '', label: 'Все' }, ...data.config.directions.map((x) => ({ value: x.id, label: x.label }))]);
+  dropdowns.personFilter.setOptions([{ value: '', label: 'Все' }, ...data.people.filter(Boolean).map((n) => ({ value: n, label: n }))]);
 }
 
 /* ───────── wire up ───────── */
@@ -574,14 +610,13 @@ function wire() {
     state.anchor = +startOf(state.mode, today) === +next ? today : next;
     state.showAll = false; render();
   });
-  $('directionFilter').addEventListener('change', (e) => { state.direction = e.target.value; render(); });
-  $('personFilter').addEventListener('change', (e) => { state.person = e.target.value; render(); });
+  dropdown($('directionFilter'), (v) => { state.direction = v; state.showAll = false; render(); });
+  dropdown($('personFilter'), (v) => { state.person = v; state.showAll = false; render(); });
   $('taskTabs').addEventListener('click', (e) => {
     const t = e.target.closest('button')?.dataset.tab;
     if (t) { state.tab = t; state.showAll = false; render(); }
   });
   document.querySelector('[data-tab-link="current"]').addEventListener('click', () => { state.tab = 'current'; render(); });
-  $('refreshBtn').addEventListener('click', refresh);
   let rt;
   addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(render, 120); });
 }

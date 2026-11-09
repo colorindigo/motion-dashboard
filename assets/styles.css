@@ -81,11 +81,13 @@ img { display: block; }
   flex-direction: column;
   align-self: start;
   min-height: 100vh;
-  padding: 63px 52px 78px;
+  padding: 63px 52px 48px;
   color: var(--text-on-dark);
 }
-/* Tall enough to hold the whole panel: it stays put while the dashboard scrolls */
-@media (min-width: 1280px) and (min-height: 1000px) {
+/* Blocks keep their size: a short window makes the panel scroll, never squeezes the gauge under the card */
+.hero > * { flex-shrink: 0; }
+/* Tall enough to hold the whole panel (≈1305): it stays put while the dashboard scrolls */
+@media (min-width: 1280px) and (min-height: 1310px) {
   .hero { position: sticky; top: 0; height: 100vh; }
 }
 .hero-top { display: flex; align-items: center; gap: 39px; }
@@ -98,7 +100,7 @@ img { display: block; }
 .hero-link:first-of-type { margin-left: auto; }
 .hero-link:hover { opacity: 1; border-bottom-color: #fff; }
 
-.period { margin: 64px 0 0 11px; }
+.period { margin: 48px 0 0 11px; }
 .tabs { display: flex; gap: 40px; flex-wrap: wrap; }
 .tabs button, .seg button {
   background: none; border: 0; padding: 0 0 10px; position: relative;
@@ -111,12 +113,12 @@ img { display: block; }
 }
 .tabs button:hover { opacity: 1; }
 .tabs button:focus-visible, .seg button:focus-visible, .pager button:focus-visible,
-.btn-alert:focus-visible, .select select:focus-visible, .hero-link:focus-visible, .logo:focus-visible {
+.hero-link:focus-visible, .logo:focus-visible {
   outline: 2px solid var(--accent-live); outline-offset: 4px; border-radius: 4px;
 }
 
 /* Headline gauge — arc on the right, knob at the value */
-.gauge-wrap { position: relative; height: 360px; margin-top: 24px; pointer-events: none; }
+.gauge-wrap { position: relative; height: 380px; margin-top: 24px; pointer-events: none; }
 .hero-gauge { position: absolute; right: 30px; top: 0; width: 330px; height: 380px; overflow: visible; }
 .hero-gauge text { font: var(--t-label); letter-spacing: .02em; fill: var(--text-on-dark); }
 .hero-gauge .g-arc { stroke: var(--stroke-on-hero); stroke-width: 1; fill: none; opacity: .7; }
@@ -124,7 +126,7 @@ img { display: block; }
 .hero-gauge .g-value { font: var(--t-metric-l); fill: var(--text-on-dark); }
 .hero-gauge .g-unit { font: var(--t-micro); fill: var(--accent-live); }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
-.period-nav { display: flex; align-items: center; gap: 24px; margin: 56px 0 0 27px; }
+.period-nav { display: flex; align-items: center; gap: 24px; margin: 40px 0 0 27px; }
 .guide { position: relative; flex: 0 1 210px; min-width: 32px; height: 1px; background: rgba(255,255,255,.5); }
 .guide i { position: absolute; top: -1.5px; width: 4px; height: 4px; border-radius: 50%; background: var(--stroke-on-hero); }
 .guide i:first-child { left: -2px; } .guide i:last-child { right: -2px; }
@@ -136,7 +138,7 @@ img { display: block; }
 
 /* Status card — what is in work now */
 .status-card {
-  position: relative; margin: -16px 0 0 88px; width: min(383px, 100%);
+  position: relative; margin: 24px 0 0 88px; width: min(383px, 100%);
   background: var(--surface-overlay); border-radius: var(--radius-overlay);
   padding: 44px 32px 40px; color: var(--text-on-dark);
 }
@@ -158,38 +160,42 @@ img { display: block; }
 .status-row .v.fits { -webkit-mask-image: none; mask-image: none; }
 .status-empty { font: var(--t-label); color: var(--text-on-dark-muted); }
 
-.hero-title { margin-top: auto; padding-top: 72px; font: var(--t-display); letter-spacing: -0.035em; }
-.hero-foot { position: absolute; right: 55px; bottom: 78px; display: flex; align-items: center; gap: 26px; font: var(--t-body-s); letter-spacing: .015em; }
+.hero-title { margin-top: auto; padding-top: 56px; font: var(--t-display); letter-spacing: -0.035em; }
+.hero-foot { position: absolute; right: 55px; bottom: 54px; display: flex; align-items: center; gap: 26px; font: var(--t-body-s); letter-spacing: .015em; }
 .hero-foot .sep { width: 1px; height: 32px; background: var(--stroke-on-hero); opacity: .3; }
 .presence { font: var(--t-micro); }
 
 /* ───────────── Dashboard ───────────── */
 .dash { padding: 56px 8px 8px 0; min-width: 0; }
 .dash-head { display: flex; align-items: center; gap: 48px; min-height: 40px; padding-right: 53px; color: var(--text-on-dark); flex-wrap: wrap; row-gap: 16px; }
-.select { position: relative; display: flex; flex-direction: column; gap: 4px; }
-.select-label { font: var(--t-micro); color: var(--text-on-dark); opacity: .72; }
-.select select {
-  appearance: none; -webkit-appearance: none; background: transparent; border: 0; padding: 0 22px 10px 0;
-  font: var(--t-body-s); letter-spacing: .015em; color: var(--text-on-dark); cursor: pointer;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1.5l5 5 5-5' stroke='white' stroke-width='1.5'/%3E%3C/svg%3E");
-  background-repeat: no-repeat; background-position: right 2px top 8px;
+/* Dropdown — MUI Select behaviour (anchored menu, listbox keyboard), dashboard tokens */
+.dd { position: relative; display: flex; flex-direction: column; gap: 4px; min-width: 120px; }
+.dd-label { font: var(--t-micro); color: var(--text-on-dark); opacity: .72; }
+.dd-trigger {
+  display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; padding: 0 0 10px; position: relative;
+  font: var(--t-body-s); letter-spacing: .015em; color: var(--text-on-dark); text-align: left; white-space: nowrap;
 }
-.select select option { color: #000; }
-.select.active::after { content: ''; position: absolute; left: 0; bottom: 0; width: 76px; height: 4px; border-radius: var(--radius-full); background: var(--accent-live); }
+.dd-trigger::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: rgba(255,255,255,.4); transition: background .2s; }
+.dd-trigger:hover::after { background: rgba(255,255,255,.8); }
+.dd.active .dd-trigger::after, .dd.open .dd-trigger::after { height: 4px; right: auto; width: 76px; border-radius: var(--radius-full); background: var(--accent-live); }
+.dd-arrow { width: 24px; height: 24px; margin-right: -6px; transition: transform .2s cubic-bezier(.72, 0, 0, 1); }
+.dd.open .dd-arrow { transform: rotate(180deg); transition-timing-function: cubic-bezier(1, 0, .28, 1); }
+.dd-menu {
+  position: absolute; top: calc(100% + 8px); left: -16px; z-index: 20; min-width: calc(100% + 32px); max-height: 360px; overflow: auto;
+  margin: 0; padding: 8px 0; list-style: none; background: var(--surface-glass); border-radius: var(--radius-control);
+  transform-origin: top left; animation: dd-in .2s cubic-bezier(.72, 0, 0, 1);
+}
+@keyframes dd-in { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: none; } }
+.dd-option { display: flex; align-items: center; min-height: 40px; padding: 8px 16px; font: var(--t-body-s); letter-spacing: .015em; color: var(--text-primary); white-space: nowrap; cursor: pointer; }
+.dd-option:hover, .dd-option.focused { background: var(--surface-card); }
+.dd-option[aria-selected="true"] { background: var(--stroke-track); }
+.dd-option[aria-selected="true"].focused, .dd-option[aria-selected="true"]:hover { background: var(--stroke-tick-minor); }
+.dd-trigger:focus-visible { outline: 2px solid var(--accent-live); outline-offset: 4px; border-radius: 4px; }
+@media (prefers-reduced-motion: reduce) { .dd-menu, .dd-arrow { animation: none; transition: none; } }
 .spacer { flex: 1; }
 .updated { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 .updated-label { font: var(--t-micro); opacity: .72; }
 .updated-value { font: var(--t-body-s); letter-spacing: .015em; white-space: nowrap; }
-.btn-alert {
-  height: 39px; min-width: 101px; padding: 0 20px; border: 0; border-radius: var(--radius-control);
-  background: var(--accent-alert); color: var(--text-on-alert); font: var(--t-body-s); letter-spacing: .015em;
-}
-.btn-alert:disabled { opacity: .6; cursor: progress; }
-.refresh-note {
-  margin: 16px 53px 0 0; padding: 14px 20px; border-radius: var(--radius-control);
-  background: var(--surface-overlay); color: var(--text-on-dark); font: var(--t-body-s); letter-spacing: .015em; max-width: 720px; margin-left: auto;
-}
-.refresh-note a { color: var(--accent-live); }
 
 .grid {
   margin-top: 39px;
@@ -328,7 +334,6 @@ img { display: block; }
   .hero-title { padding-top: 48px; }
   .dash { padding: 0 16px 16px; }
   .dash-head { padding: 0; }
-  .refresh-note { margin-right: 0; }
 }
 @media (max-width: 900px) {
   .grid {

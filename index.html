@@ -70,22 +70,14 @@
     <!-- Dashboard -->
     <main class="dash">
       <header class="dash-head">
-        <label class="select">
-          <span class="select-label">Направление</span>
-          <select id="directionFilter"><option value="">Все</option></select>
-        </label>
-        <label class="select">
-          <span class="select-label">Моушен</span>
-          <select id="personFilter"><option value="">Все</option></select>
-        </label>
+        <div class="dd" id="directionFilter" data-label="Направление"></div>
+        <div class="dd" id="personFilter" data-label="Моушен"></div>
         <div class="spacer"></div>
         <div class="updated">
           <span class="updated-label">Обновлено</span>
           <span class="updated-value" id="updatedAt">—</span>
         </div>
-        <button class="btn-alert" id="refreshBtn" type="button">Обновить</button>
       </header>
-      <div class="refresh-note" id="refreshNote" hidden></div>
 
       <div class="grid">
         <section class="card card-chart" aria-labelledby="chartTitle">

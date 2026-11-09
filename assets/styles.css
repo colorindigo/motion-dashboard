@@ -138,7 +138,7 @@ img { display: block; }
 
 /* Status card — what is in work now */
 .status-card {
-  position: relative; margin: 24px 0 0 88px; width: min(383px, 100%);
+  position: relative; margin: 24px 0 0; width: 100%; /* full panel width, edge to edge with the title (owner, 9 Nov) */
   background: var(--surface-overlay); border-radius: var(--radius-overlay);
   padding: 44px 32px 40px; color: var(--text-on-dark);
 }

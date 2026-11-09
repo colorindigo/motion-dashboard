@@ -50,7 +50,11 @@ if (DRIVE_PROXY_URL) {
   drive = await fetchDriveRoots({ proxyUrl: DRIVE_PROXY_URL, ids, projectRootId: config.drive.rootId });
   drive.fetchedAt = new Date().toISOString();
   driveSource = 'live';
-  await writeJson(path('snapshots/drive-roots.json'), drive);
+  // Keep only videos in the snapshot: images and documents from task folders are not needed and should not travel.
+  const videoExt = new RegExp(`\\.(${config.drive.videoExtensions.join('|')})$`, 'i');
+  const slim = { fetchedAt: drive.fetchedAt, roots: {} };
+  for (const [id, r] of Object.entries(drive.roots)) slim.roots[id] = { ...r, files: (r.files || []).filter((f) => videoExt.test(f.name) || String(f.mimeType || '').startsWith('video/')) };
+  await writeJson(path('snapshots/drive-roots.json'), slim);
 } else if (existsSync(path('snapshots/drive-roots.json'))) {
   drive = await readJson(path('snapshots/drive-roots.json'));
   driveSource = 'snapshot';

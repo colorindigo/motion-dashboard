@@ -17,14 +17,14 @@ export function classifyDirection(task, config) {
     const hit = config.directions.find((d) => d.label.toLowerCase() === task.direction.toLowerCase() || d.id === task.direction.toLowerCase());
     if (hit) return { id: hit.id, reason: 'поле в Notion' };
   }
+  // Rules run in config order; inside a direction: its apps, its project names, then generic words
+  // that count only for tasks without an app (so "web" in a client task does not make it internal).
   for (const d of config.directions) {
     const re = d.namePattern ? new RegExp(d.namePattern, 'iu') : null;
-    if (d.id === 'internal') {
-      if (re && re.test(name) && (!d.whenNoApp || apps.length === 0)) return { id: d.id, reason: 'название задачи' };
-      continue;
-    }
+    const reNoApp = d.namePatternNoApp ? new RegExp(d.namePatternNoApp, 'iu') : null;
     if (d.apps && apps.some((a) => d.apps.includes(a))) return { id: d.id, reason: 'приложение ' + apps.join(', ') };
     if (re && re.test(name)) return { id: d.id, reason: 'название задачи' };
+    if (reNoApp && apps.length === 0 && reNoApp.test(name)) return { id: d.id, reason: 'название задачи' };
     if (d.fallbackWhenSource && sources.length) return { id: d.id, reason: 'источник ' + sources.join(', ') };
     if (d.fallbackWhenApp && apps.length) return { id: d.id, reason: 'приложение ' + apps.join(', ') };
   }
@@ -207,7 +207,9 @@ export function buildData({ tasks, drive, config, meta }) {
       notionUrl: config.notion.url,
       driveRootUrl: config.drive.rootUrl,
       statuses: config.statuses,
-      directions: config.directions.map((d) => ({ id: d.id, label: d.label })),
+      // Rules may repeat a direction (project names first, generic words later); show each once, in the owner's order.
+      directions: (config.directionOrder || [...new Set(config.directions.map((d) => d.id))])
+        .map((id) => ({ id, label: config.directions.find((d) => d.id === id).label })),
       github: config.github,
     },
     people,

@@ -62,6 +62,16 @@
   },
   "directions": [
     {
+      "id": "internal",
+      "label": "Внутренние",
+      "namePattern": "appstart|аппстарт|metamagic|метамеджик|rankforge|appbooster|апбустер|flarecast|флейркаст",
+      "apps": [
+        "AppStart",
+        "Rankforge"
+      ],
+      "note": "AppStart, Metamagic, Rankforge, Flarecast и сайт Appbooster — внутренние проекты (решение владельца, 9 ноя 2026); правило проекта сильнее правила виралки"
+    },
+    {
       "id": "viral",
       "label": "Виралка",
       "namePattern": "(^|[^\\p{L}])(lab[ -]?viral|viral|вирал\\p{L}*|тикток|tiktok|уникализац\\p{L}*|ugc)([^\\p{L}]|$)"
@@ -69,8 +79,7 @@
     {
       "id": "internal",
       "label": "Внутренние",
-      "namePattern": "appbooster|appbonus|платформ\\p{L}*|platform|презентац\\p{L}*|(^|[^\\p{L}])преза([^\\p{L}]|$)|корпорат\\p{L}*|лендинг\\p{L}*|landing|сайт\\p{L}*|website|(^|[^\\p{L}])(web|aso)([^\\p{L}]|$)|автоматизац\\p{L}*|lovemobile",
-      "whenNoApp": true
+      "namePatternNoApp": "appbonus|платформ\\p{L}*|platform|презентац\\p{L}*|(^|[^\\p{L}])преза([^\\p{L}]|$)|корпорат\\p{L}*|лендинг\\p{L}*|landing|сайт\\p{L}*|website|(^|[^\\p{L}])(web|aso)([^\\p{L}]|$)|автоматизац\\p{L}*|lovemobile"
     },
     {
       "id": "lab",
@@ -80,10 +89,9 @@
         "HeyBabe",
         "AI Telepromer",
         "Slate AI",
-        "Rankforge",
         "AIMO Note Taker App"
       ],
-      "namePattern": "picflick|pickflick|heybabe|rankforge|lootloop|metamagic|planty|flarecast|slate|telepromp|(^|[^\\p{L}])(hb|pf)([^\\p{L}]|$)"
+      "namePattern": "picflick|pickflick|heybabe|lootloop|planty|slate|telepromp|(^|[^\\p{L}])(hb|pf)([^\\p{L}]|$)"
     },
     {
       "id": "buying",
@@ -96,5 +104,11 @@
   "github": {
     "repo": "colorindigo/motion-dashboard",
     "workflow": "sync.yml"
-  }
+  },
+  "directionOrder": [
+    "buying",
+    "viral",
+    "lab",
+    "internal"
+  ]
 }

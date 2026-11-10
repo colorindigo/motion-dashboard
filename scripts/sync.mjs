@@ -53,7 +53,12 @@ if (DRIVE_PROXY_URL) {
   // Keep only videos in the snapshot: images and documents from task folders are not needed and should not travel.
   const videoExt = new RegExp(`\\.(${config.drive.videoExtensions.join('|')})$`, 'i');
   const slim = { fetchedAt: drive.fetchedAt, roots: {} };
-  for (const [id, r] of Object.entries(drive.roots)) slim.roots[id] = { ...r, files: (r.files || []).filter((f) => videoExt.test(f.name) || String(f.mimeType || '').startsWith('video/')) };
+  // The snapshot lives in a public repo: no e-mails in it, only the team member a file belongs to (config.people).
+  const ownerOf = (f) => config.people[(f.ownerEmail || f.modifierEmail || '').toLowerCase()] || null;
+  for (const [id, r] of Object.entries(drive.roots)) {
+    slim.roots[id] = { ...r, files: (r.files || []).filter((f) => videoExt.test(f.name) || String(f.mimeType || '').startsWith('video/'))
+      .map(({ ownerEmail, modifierEmail, ...f }) => ({ ...f, owner: ownerOf({ ownerEmail, modifierEmail }) })) };
+  }
   await writeJson(path('snapshots/drive-roots.json'), slim);
 } else if (existsSync(path('snapshots/drive-roots.json'))) {
   drive = await readJson(path('snapshots/drive-roots.json'));

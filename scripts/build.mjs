@@ -64,6 +64,7 @@ export function resolutionOf(file) {
 }
 
 function personFromFile(file, config) {
+  if ('owner' in file) return file.owner; // a snapshot keeps the person, not the e-mail
   const email = (file.ownerEmail || file.modifierEmail || '').toLowerCase();
   return config.people[email] || null;
 }
@@ -165,7 +166,6 @@ export function buildData({ tasks, drive, config, meta }) {
       s: file.size ? Number(file.size) : null,
       d: file.durationMs ? Math.round(file.durationMs / 1000) : null,
       by: people,
-      own: file.ownerEmail || null,
     });
   }
   videos.sort((a, b) => (a.at < b.at ? 1 : -1));

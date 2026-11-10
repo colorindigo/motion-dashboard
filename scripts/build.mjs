@@ -170,10 +170,34 @@ export function buildData({ tasks, drive, config, meta }) {
   }
   videos.sort((a, b) => (a.at < b.at ? 1 : -1));
 
+  // Only the team's work counts (config.team): other people's tasks and files are left out after the files have
+  // found their tasks, so the per-person numbers add up to the totals. A shared task keeps only its team members.
+  let teamTasks = outTasks, kept = videos;
+  const dropped = { tasks: 0, files: 0 };
+  if (config.team?.length) {
+    const team = new Set(config.team);
+    const had = new Map();
+    for (const v of videos) had.set(v.t, (had.get(v.t) || 0) + 1);
+    const out = new Set();
+    for (const t of outTasks) {
+      if (!t.assignees.length) continue;
+      t.assignees = t.assignees.filter((n) => team.has(n));
+      if (!t.assignees.length) out.add(t.id);
+    }
+    kept = videos.filter((v) => !out.has(v.t)).map((v) => ({ ...v, by: v.by.filter((n) => team.has(n)) })).filter((v) => v.by.length);
+    const left = new Map();
+    for (const v of kept) left.set(v.t, (left.get(v.t) || 0) + 1);
+    // an unassigned task whose files were all someone else's goes too
+    for (const t of outTasks) if (!t.assignees.length && had.get(t.id) && !left.get(t.id)) out.add(t.id);
+    teamTasks = outTasks.filter((t) => !out.has(t.id));
+    dropped.tasks = out.size;
+    dropped.files = videos.length - kept.length;
+  }
+
   // Per-task Drive summary.
   const vByTask = new Map();
-  for (const v of videos) vByTask.set(v.t, [...(vByTask.get(v.t) || []), v]);
-  for (const t of outTasks) {
+  for (const v of kept) vByTask.set(v.t, [...(vByTask.get(v.t) || []), v]);
+  for (const t of teamTasks) {
     const list = vByTask.get(t.id) || [];
     if (t.drive) {
       t.drive.files = list.length;
@@ -184,14 +208,15 @@ export function buildData({ tasks, drive, config, meta }) {
     }
   }
 
-  const people = [...new Set(outTasks.flatMap((t) => t.assignees).concat(videos.flatMap((v) => v.by)))].sort();
+  const people = [...new Set(teamTasks.flatMap((t) => t.assignees).concat(kept.flatMap((v) => v.by)))].sort();
   const checks = {
-    tasks: outTasks.length,
-    withDriveLink: outTasks.filter((t) => t.drive).length,
+    tasks: teamTasks.length,
+    withDriveLink: teamTasks.filter((t) => t.drive).length,
     driveFolders: byFolder.size,
     driveRootsRead: Object.values(roots).filter((r) => r && r.ok !== false).length,
     driveRootsFailed: Object.values(roots).filter((r) => r && r.ok === false).length,
-    videosFound: videos.length,
+    videosFound: kept.length,
+    notTeam: dropped,
     tasksWithVideos: vByTask.size,
     sharedFolders: [...byFolder.values()].filter((l) => l.length > 1).length,
     broadFolders: broad.size,
@@ -213,7 +238,7 @@ export function buildData({ tasks, drive, config, meta }) {
     },
     people,
     checks,
-    tasks: outTasks,
-    videos,
+    tasks: teamTasks,
+    videos: kept,
   };
 }

@@ -12,7 +12,7 @@ const DIR_COLOR = { buying: 'var(--dir-buying)', viral: 'var(--dir-viral)', lab:
 
 const LOG_ROWS = 10;
 const TABS = ['done', 'current', 'nolink'];
-const state = { data: null, mode: 'month', anchor: startOfDay(new Date()), direction: '', person: '', view: 'dash', tab: 'done', q: '', sort: null };
+const state = { stamp: '', data: null, mode: 'month', anchor: startOfDay(new Date()), direction: '', person: '', view: 'dash', tab: 'done', q: '', sort: null };
 const dropdowns = {};
 
 /* ───────── helpers ───────── */
@@ -202,7 +202,7 @@ function render() {
   const isCurrent = a <= now && now < b;
   const end = isCurrent ? now : b;
 
-  for (const btn of $('periodTabs').querySelectorAll('button')) btn.setAttribute('aria-selected', String(btn.dataset.mode === state.mode));
+  placeRange();
   $('periodLabel').textContent = periodLabel(state.mode, state.anchor);
   $('nextPeriod').disabled = shift(state.mode, a, 1) > now;
 
@@ -217,6 +217,26 @@ function render() {
   writeHash();
 }
 
+// the range lives inside the open period tab; on a phone the tabs are too narrow, so it goes to the top of the sheet
+const PHONE = matchMedia('(max-width: 800px)');
+function placeRange() {
+  for (const tab of $('periodTabs').querySelectorAll('.ptab')) {
+    const on = tab.dataset.mode === state.mode;
+    tab.classList.toggle('is-on', on);
+    tab.querySelector('.ptab-btn').setAttribute('aria-selected', String(on));
+  }
+  const host = PHONE.matches ? $('rangeSlot') : $('periodTabs').querySelector('.ptab.is-on');
+  const range = $('range');
+  if (range.parentElement !== host) {
+    const moved = range.parentElement.classList.contains('ptab');
+    host.append(range);
+    range.classList.remove('is-moved');
+    if (moved) { void range.offsetWidth; range.classList.add('is-moved'); }
+  }
+  // the first tab open: the sheet's own corner under it is square
+  $('sheet').classList.toggle('is-joined', state.mode === 'day' && !PHONE.matches);
+}
+
 function renderDashboard(a, b, now, isCurrent, end) {
   const { data } = state;
   const vids = videosIn(a, b);
@@ -225,14 +245,14 @@ function renderDashboard(a, b, now, isCurrent, end) {
   const pb = isCurrent ? new Date(+pa + (now - a)) : a;
   const pVideos = creatives(videosIn(pa, pb));
 
-  // folder tab: what the page is scoped to
+  // the numbers on the right: when the data is from, how many videos; a picked direction or person sits in the caption
   const scope = [state.direction ? data.dirLabel[state.direction] : '', state.person].filter(Boolean);
-  $('scopeLabel').textContent = scope.length ? scope.join(SEP) : 'Все ролики';
+  $('scopeLabel').textContent = state.stamp;
   $('scopeLabel').setAttribute('data-fit', '');
   $('tabValue').textContent = `${nf.format(nVideos)} ${plural(nVideos, W_VIDEOS)}`;
   const tabCap = $('tabCap');
   tabCap.replaceChildren(`${nf.format(nFiles)} ${plural(nFiles, W_FILES)}${SEP}${nf.format(nTasks)} ${plural(nTasks, W_TASKS)}`);
-  if (scope.length) tabCap.append(SEP, h('button', { type: 'button', text: 'сбросить', onclick: () => { state.direction = ''; state.person = ''; render(); } }));
+  if (scope.length) tabCap.append(SEP + scope.join(SEP) + SEP, h('button', { type: 'button', text: 'сбросить', onclick: () => { state.direction = ''; state.person = ''; render(); } }));
 
   renderVideosCard(vids, nVideos, pVideos, isCurrent);
   renderDaysCard(a, b, end);
@@ -499,7 +519,7 @@ function taskLists(a, b) {
 }
 const STATUS_ON = new Set(['In progress', 'Review']);
 const COLS = [
-  { key: 'name', label: 'Задача', w: 'minmax(260px, 1fr)', sort: 'name' },
+  { key: 'name', label: 'Задача', w: 'minmax(168px, 1fr)', sort: 'name' },
   { key: 'who', label: 'Моушен', w: 'max-content' },
   { key: 'dir', label: 'Направление', w: 'max-content' },
   { key: 'status', label: 'Статус', w: 'max-content', sort: 'status' },
@@ -640,14 +660,15 @@ function renderChrome() {
   const live = data.sources.notion === 'api' && data.sources.drive === 'live';
   const stamps = [data.sources.notion === 'api' ? data.generatedAt : data.sources.notionExportedAt,
     data.sources.drive === 'live' ? data.generatedAt : data.sources.driveFetchedAt].filter(Boolean).sort();
-  $('updated').textContent = `${live ? 'Обновлено' : 'Данные на'} ${stamp(stamps[0] || data.generatedAt)}`;
+  state.stamp = `${live ? 'Обновлено' : 'Данные на'} ${stamp(stamps[0] || data.generatedAt)}`;
   $('notionLink').href = data.config.notionUrl;
   $('driveLink').href = data.config.driveRootUrl;
 }
 
 /* ───────── wire ───────── */
+PHONE.addEventListener('change', () => { placeRange(); if (state.view === 'dash') fitLog(); });
 $('periodTabs').addEventListener('click', (e) => {
-  const m = e.target.closest('button')?.dataset.mode;
+  const m = e.target.closest('.ptab-btn')?.dataset.mode;
   if (m) { state.mode = m; render(); }
 });
 $('prevPeriod').addEventListener('click', () => { state.anchor = shift(state.mode, startOf(state.mode, state.anchor), -1); render(); });
@@ -670,10 +691,11 @@ addEventListener('resize', () => { if (state.view === 'dash') fitLog(); });
 
 (async function main() {
   readHash();
+  placeRange(); // the range stands in its tab before the data comes
   try {
     state.data = await load();
   } catch (e) {
-    $('updated').textContent = `Не удалось загрузить данные: ${e.message}`;
+    $('scopeLabel').textContent = `Не удалось загрузить данные: ${e.message}`;
     $('app').removeAttribute('aria-busy');
     return;
   }

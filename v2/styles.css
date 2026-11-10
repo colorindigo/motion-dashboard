@@ -69,18 +69,9 @@ p, h1, h2 { margin: 0; }
 .rbtn:disabled { color: var(--text-3); cursor: default; }
 .range-label { min-width: 176px; padding: 0 8px; text-align: center; font: 600 18px/24px var(--font); color: var(--ink); white-space: nowrap; }
 .range-slot:empty { display: none; }
-.dash-info { margin-left: auto; flex: 0 1 auto; min-width: 0; max-width: 420px; padding: 0 4px 8px; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; text-align: right; }
-.dt-head { display: flex; align-items: center; gap: 2px; min-width: 0; max-width: 100%; height: 20.3px; }
-.dt-back { flex: none; }
-.dt-back:not([hidden]) + .dt-label { color: var(--ink); }
-.dt-label { min-width: 0; font: 500 14px/20.3px var(--font); color: var(--text-2); white-space: nowrap; overflow: hidden; -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent); }
-.dt-label.fits { -webkit-mask-image: none; mask-image: none; }
-.dt-value { font: 600 24px/32px var(--font); color: var(--ink); white-space: nowrap; }
-.dt-cap { font: 400 12px/16px var(--font); color: var(--text-2); }
-.dt-cap button { font: inherit; color: var(--ink); text-decoration: underline; text-underline-offset: 2px; }
-.pbtn { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; color: var(--ink); transition: background .2s; }
-.pbtn:hover { background: var(--surface); }
-.pbtn svg { width: 20px; height: 20px; }
+.backbtn { margin: 0 0 8px auto; flex: none; height: 48px; padding: 0 20px 0 14px; border-radius: 12px; background: var(--surface); display: inline-flex; align-items: center; gap: 8px; font: 500 14px/20px var(--font); color: var(--ink); transition: background .2s; }
+.backbtn:hover { background: var(--tile); }
+.load-error { margin-bottom: 16px; font: 400 13px/18px var(--font); color: var(--text-2); }
 
 /* the sheet and its grid */
 .dash-sheet { position: relative; padding: 16px; border-radius: 24px; background: var(--tint); transition: opacity .2s; }
@@ -313,7 +304,7 @@ p, h1, h2 { margin: 0; }
 /* narrow: period first, the tab under it so it still grows out of the sheet */
 @media (max-width: 800px) {
   .dash-top { flex-wrap: wrap; gap: 0; padding-top: 16px; }
-  .dash-info { order: -1; width: 100%; max-width: none; align-items: flex-start; text-align: left; padding: 0 4px 16px; }
+  .backbtn { order: -1; margin: 0 0 16px; }
   .ptabs { width: 100%; }
   .ptab { flex: 1; min-width: 0; height: 52px; }
   .ptab.is-on { padding-right: 0; }

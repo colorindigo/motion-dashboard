@@ -12,7 +12,7 @@ const DIR_COLOR = { buying: 'var(--dir-buying)', viral: 'var(--dir-viral)', lab:
 
 const LOG_ROWS = 10;
 const TABS = ['done', 'current', 'nolink'];
-const state = { stamp: '', data: null, mode: 'month', anchor: startOfDay(new Date()), direction: '', person: '', view: 'dash', tab: 'done', q: '', sort: null };
+const state = { data: null, mode: 'year', anchor: startOfDay(new Date()), direction: '', person: '', view: 'dash', tab: 'done', q: '', sort: null };
 const dropdowns = {};
 
 /* ───────── helpers ───────── */
@@ -114,10 +114,6 @@ function fmtDate(ms) {
   return d.getFullYear() === new Date().getFullYear() ? short(d) : `${short(d)} ${d.getFullYear()}`;
 }
 const initials = (name) => (name || '').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('') || '—';
-function stamp(iso) {
-  const d = new Date(iso);
-  return `${short(d)}, ${fTime.format(d)}`;
-}
 // Fade the end only for words that really overflow; measured again once the web font replaces the wider fallback.
 function measureFits(root) {
   const run = () => root.querySelectorAll('[data-fit]').forEach((el) => el.classList.toggle('fits', el.scrollWidth <= el.clientWidth + 1));
@@ -166,7 +162,7 @@ function readView(p = new URLSearchParams(location.hash.slice(1))) {
 }
 function hashString() {
   const p = new URLSearchParams();
-  p.set('m', state.mode);
+  if (state.mode !== 'year') p.set('m', state.mode); // the year is the start: a link without m opens it
   const a = state.anchor;
   if (+startOf(state.mode, a) !== +startOf(state.mode, new Date())) p.set('d', `${a.getFullYear()}-${String(a.getMonth() + 1).padStart(2, '0')}-${String(a.getDate()).padStart(2, '0')}`);
   if (state.direction) p.set('dir', state.direction);
@@ -240,19 +236,10 @@ function placeRange() {
 function renderDashboard(a, b, now, isCurrent, end) {
   const { data } = state;
   const vids = videosIn(a, b);
-  const nVideos = creatives(vids), nFiles = vids.length, nTasks = tasksOf(vids);
+  const nVideos = creatives(vids);
   const pa = shift(state.mode, a, -1);
   const pb = isCurrent ? new Date(+pa + (now - a)) : a;
   const pVideos = creatives(videosIn(pa, pb));
-
-  // the numbers on the right: when the data is from, how many videos; a picked direction or person sits in the caption
-  const scope = [state.direction ? data.dirLabel[state.direction] : '', state.person].filter(Boolean);
-  $('scopeLabel').textContent = state.stamp;
-  $('scopeLabel').setAttribute('data-fit', '');
-  $('tabValue').textContent = `${nf.format(nVideos)} ${plural(nVideos, W_VIDEOS)}`;
-  const tabCap = $('tabCap');
-  tabCap.replaceChildren(`${nf.format(nFiles)} ${plural(nFiles, W_FILES)}${SEP}${nf.format(nTasks)} ${plural(nTasks, W_TASKS)}`);
-  if (scope.length) tabCap.append(SEP + scope.join(SEP) + SEP, h('button', { type: 'button', text: 'сбросить', onclick: () => { state.direction = ''; state.person = ''; render(); } }));
 
   renderVideosCard(vids, nVideos, pVideos, isCurrent);
   renderDaysCard(a, b, end);
@@ -564,15 +551,6 @@ function renderTasksPage(a, b) {
   const [key, dir] = state.sort || DEFAULT_SORT[state.tab];
   rows.sort(sorter(key, dir));
 
-  // the folder tab says what the page holds
-  $('scopeLabel').textContent = 'Задачи';
-  $('scopeLabel').removeAttribute('data-fit');
-  $('scopeLabel').classList.add('fits');
-  $('tabValue').textContent = `${nf.format(rows.length)} ${plural(rows.length, W_TASKS)}`;
-  const nv = rows.reduce((s, r) => s + r.videos, 0), nfl = rows.reduce((s, r) => s + r.files, 0);
-  $('tabCap').replaceChildren(state.tab === 'done' ? `${nf.format(nv)} ${plural(nv, W_VIDEOS)}${SEP}${nf.format(nfl)} ${plural(nfl, W_FILES)}`
-    : state.tab === 'current' ? 'Сейчас, вне периода' : 'Закрыты в периоде без роликов');
-
   dropdowns.dirFilter.setOptions([{ value: '', label: 'Все направления' }, ...data.config.directions.map((d) => ({ value: d.id, label: d.label }))]);
   dropdowns.dirFilter.setValue(state.direction);
   dropdowns.personFilter.setOptions([{ value: '', label: 'Все моушены' }, ...data.people.filter(Boolean).map((n) => ({ value: n, label: n }))]);
@@ -657,10 +635,6 @@ function fitLog() {
 
 function renderChrome() {
   const { data } = state;
-  const live = data.sources.notion === 'api' && data.sources.drive === 'live';
-  const stamps = [data.sources.notion === 'api' ? data.generatedAt : data.sources.notionExportedAt,
-    data.sources.drive === 'live' ? data.generatedAt : data.sources.driveFetchedAt].filter(Boolean).sort();
-  state.stamp = `${live ? 'Обновлено' : 'Данные на'} ${stamp(stamps[0] || data.generatedAt)}`;
   $('notionLink').href = data.config.notionUrl;
   $('driveLink').href = data.config.driveRootUrl;
 }
@@ -695,7 +669,7 @@ addEventListener('resize', () => { if (state.view === 'dash') fitLog(); });
   try {
     state.data = await load();
   } catch (e) {
-    $('scopeLabel').textContent = `Не удалось загрузить данные: ${e.message}`;
+    $('sheet').prepend(h('p', { class: 'load-error', text: `Не удалось загрузить данные: ${e.message}` }));
     $('app').removeAttribute('aria-busy');
     return;
   }

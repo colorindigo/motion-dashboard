@@ -8,7 +8,7 @@ const SEP = `${NBSP}${NBSP}·  `; // rule 29: two non-breaking spaces before the
 const nf = new Intl.NumberFormat('ru-RU');
 const nf1 = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 1 });
 
-const state = { data: null, mode: 'month', anchor: startOfDay(new Date()), direction: '', person: '', tab: 'done', showAll: false };
+const state = { data: null, mode: 'year', anchor: startOfDay(new Date()), direction: '', person: '', tab: 'done', showAll: false };
 
 /* ───────── helpers ───────── */
 function h(tag, attrs = {}, ...kids) {
@@ -221,7 +221,7 @@ function readHash() {
 }
 function writeHash() {
   const p = new URLSearchParams();
-  p.set('m', state.mode);
+  if (state.mode !== 'year') p.set('m', state.mode); // the year is the start: a link without m opens it
   const a = state.anchor;
   const today = startOfDay(new Date());
   if (+startOf(state.mode, a) !== +startOf(state.mode, today)) p.set('d', `${a.getFullYear()}-${String(a.getMonth() + 1).padStart(2, '0')}-${String(a.getDate()).padStart(2, '0')}`);

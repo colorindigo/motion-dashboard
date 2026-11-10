@@ -18,6 +18,10 @@
   --inverse: #27232a;
   --on-inverse-2: #92919b;
   --av: #262427;
+  --av-row: #3e4046;          /* the 24 avatar in a table */
+  --hair: rgba(0, 0, 0, .05); /* Divider · Hairline, over a table head */
+  --chip-n: #f5f5f5;          /* Chip · Neutral */
+  --ok-bg: #f7f2fe; --ok: #9d5aef; /* Chip · Success */
   /* the token split's pastels (filled render), one per direction */
   --dir-buying: #ffdb8c;
   --dir-viral: #ffa9a2;
@@ -43,17 +47,18 @@ p, h1, h2 { margin: 0; }
 .main[aria-busy="true"] .dash-sheet { opacity: .55; }
 .dash { container-type: inline-size; max-width: 1888px; margin: 0 auto; }
 
-/* top: folder tab, slot, period */
+/* top: folder tab, period */
 .dash-top { position: relative; display: flex; align-items: flex-start; gap: 8px; padding-top: 32px; }
-.dash-tab { position: relative; flex: none; width: 260px; height: 105px; padding: 16px 20px; border-radius: 18px 18px 0 0; background: var(--tint); display: flex; flex-direction: column; gap: 2px; }
+.dash-tab { position: relative; flex: none; width: 260px; height: 105px; min-width: 0; padding: 16px 20px; border-radius: 18px 18px 0 0; background: var(--tint); display: flex; flex-direction: column; gap: 2px; }
 .dash-tab::after { content: ""; position: absolute; right: -18px; bottom: 0; width: 18px; height: 18px; background: radial-gradient(circle at 100% 0, transparent 17.5px, var(--tint) 18px); }
-.dt-label { font: 500 14px/20.3px var(--font); color: var(--text-2); white-space: nowrap; overflow: hidden; -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent); }
+.dt-head { display: flex; align-items: center; gap: 2px; min-width: 0; height: 20.3px; }
+.dt-back { flex: none; margin-left: -6px; }
+.dt-back:not([hidden]) + .dt-label { color: var(--ink); }
+.dt-label { min-width: 0; font: 500 14px/20.3px var(--font); color: var(--text-2); white-space: nowrap; overflow: hidden; -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent); }
 .dt-label.fits { -webkit-mask-image: none; mask-image: none; }
 .dt-value { font: 600 24px/32px var(--font); color: var(--ink); }
 .dt-cap { font: 400 12px/16px var(--font); color: var(--text-2); }
 .dt-cap button { font: inherit; color: var(--ink); text-decoration: underline; text-underline-offset: 2px; }
-.dash-slot { flex: none; width: 260px; height: 96px; border-radius: 24px; background: var(--surface); display: flex; align-items: center; justify-content: center; gap: 8px; font: 500 14px/20.3px var(--font); color: var(--ink); transition: background .2s; }
-.dash-slot:hover { background: var(--tile); }
 .dash-period { margin-left: auto; flex: none; width: 402px; display: flex; flex-direction: column; gap: 8px; }
 .dash-status { height: 40px; display: flex; align-items: center; justify-content: space-between; gap: 16px; font: 400 13px/18px var(--font); color: var(--text-2); }
 .pnav { display: inline-flex; align-items: center; gap: 4px; color: var(--ink); font-weight: 500; white-space: nowrap; }
@@ -147,27 +152,168 @@ p, h1, h2 { margin: 0; }
 .ev-meta { font: 400 12px/16px var(--font); color: var(--text-2); white-space: nowrap; overflow: hidden; }
 .ev-time { flex: none; font: 400 13px/18px var(--font); color: var(--text-2); }
 .ev:hover .ev-name { text-decoration: underline; text-underline-offset: 3px; }
-.ev-more { align-self: flex-start; margin-top: 8px; height: 40px; padding: 0 16px; border-radius: 12px; background: var(--tint); font: 500 14px/18px var(--font); transition: background .2s; }
+.ev-more { flex: none; align-self: flex-start; margin-top: 8px; height: 40px; padding: 0 16px; border-radius: 12px; background: var(--tint); font: 500 14px/18px var(--font); transition: background .2s; }
 .ev-more:hover { background: var(--field); }
 .ev-empty { padding: 24px 0; font: 400 13px/18px var(--font); color: var(--text-2); }
 
-.foot { margin: 16px 4px 0; font: 400 12px/16px var(--font); color: var(--text-2); max-width: 90ch; }
+
+/* ───────── the tasks page: folder tabs over a white card, as the custody pages ───────── */
+.tview { display: flex; flex-direction: column; min-width: 0; }
+.ftabs { display: flex; height: 48px; min-width: 0; }
+.ftab { position: relative; flex: none; height: 48px; padding: 0 27px; border-radius: 18px 18px 0 0; font: 500 14px/20px var(--font); letter-spacing: -.006em; color: var(--text-2); white-space: nowrap; transition: color .2s; }
+.ftab:hover { color: var(--ink); }
+.ftab[aria-selected="true"] { background: var(--surface); color: var(--ink); font-weight: 600; }
+.ftab[aria-selected="true"]::after, .ftab[aria-selected="true"]:not(:first-child)::before { content: ""; position: absolute; bottom: 0; width: 18px; height: 18px; pointer-events: none; }
+.ftab[aria-selected="true"]::after { right: -18px; background: radial-gradient(circle at 100% 0, transparent 17.5px, var(--surface) 18px); }
+.ftab[aria-selected="true"]:not(:first-child)::before { left: -18px; background: radial-gradient(circle at 0 0, transparent 17.5px, var(--surface) 18px); }
+.ftab:focus-visible { outline-offset: -2px; }
+.ftab-n { margin-left: 8px; font-weight: 500; color: var(--text-3); }
+.ftab[aria-selected="true"] .ftab-n { color: var(--text-2); }
+
+.tcard { container: tcard / inline-size; position: relative; min-width: 0; display: flex; flex-direction: column; padding: 18px 0; border-radius: 24px; background: var(--surface); }
+.tcard.is-joined { border-top-left-radius: 0; }
+.toolbar { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 26px 23px; }
+/* Field: its fill is the card's own, so the 2 border is its edge (baseline rule 7) */
+.field { width: 296px; max-width: 100%; height: 40px; padding: 0 12px; border: 2px solid var(--field); border-radius: 12px; display: flex; align-items: center; gap: 8px; cursor: text; background: var(--surface); transition: border-color .2s; }
+.field:focus-within { border-color: var(--violet); }
+.field .ico { color: var(--text-3); }
+.field input { flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; outline: 0; background: transparent; font: 400 14px/20px var(--font); color: var(--ink); }
+.field input::placeholder { color: var(--text-2); }
+.field input::-webkit-search-cancel-button { cursor: pointer; }
+
+/* MUI-style select: the field opens an anchored listbox under it */
+.dd { position: relative; flex: none; }
+.dd-trigger { width: 220px; height: 40px; padding: 0 8px 0 12px; border: 2px solid var(--field); border-radius: 12px; background: var(--surface); display: flex; align-items: center; justify-content: space-between; gap: 8px; font: 400 14px/20px var(--font); color: var(--ink); text-align: left; transition: border-color .2s; }
+.dd-trigger:focus-visible { outline: 0; border-color: var(--violet); }
+.dd.open .dd-trigger { border-color: var(--violet); }
+.dd.active .dd-value { font-weight: 500; }
+.dd-value { min-width: 0; overflow: hidden; white-space: nowrap; }
+.dd-arrow { color: var(--text-2); transition: transform .2s var(--ease-exit); }
+.dd.open .dd-arrow { transform: rotate(180deg); transition-timing-function: var(--ease-enter); }
+.dd-menu { position: absolute; z-index: 20; top: calc(100% + 4px); left: 0; min-width: 100%; max-height: 320px; overflow: auto; margin: 0; padding: 4px; list-style: none; border: 2px solid var(--field); border-radius: 12px; background: var(--surface); outline: 0; animation: dd-in .22s var(--ease-enter); }
+@keyframes dd-in { from { opacity: 0; transform: translateY(-4px); } }
+.dd-option { display: flex; align-items: center; min-height: 36px; padding: 8px 12px; border-radius: 8px; font: 400 14px/20px var(--font); color: var(--ink); white-space: nowrap; cursor: pointer; }
+.dd-option.focused { background: var(--tile); }
+.dd-option[aria-selected="true"] { background: var(--tint); font-weight: 500; }
+
+/* the table: one grid, the head and every row its subgrid, so a column is one width in all of them */
+.tbl { position: relative; min-width: 0; overflow-x: auto; scrollbar-width: thin; }
+.tgrid { min-width: 0; display: grid; grid-template-columns: var(--cols); }
+.thead, .tr { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; padding: 0 26px 0 27px; }
+.thead { position: sticky; top: 0; z-index: 2; height: 42px; border-top: 1px solid var(--hair); border-bottom: 1px solid var(--rule); background: var(--surface); }
+.thead > span { display: flex; align-items: center; min-width: 0; padding: 0 16px; font: 600 12.5px/16px var(--font); text-transform: uppercase; color: var(--text-3); white-space: nowrap; }
+.thead > .r { justify-content: flex-end; }
+.th-sort { display: inline-flex; align-items: center; gap: 4px; font: inherit; text-transform: inherit; color: inherit; transition: color .2s; }
+.th-sort:hover, .th-sort.is-on { color: var(--text-2); }
+.th-arrow { width: 12px; height: 12px; opacity: 0; transition: opacity .2s; }
+.th-sort.is-on .th-arrow { opacity: 1; }
+.th-sort:hover .th-arrow { opacity: .6; }
+.tr { position: relative; }
+.tr::after { content: ""; position: absolute; left: 27px; right: 26px; bottom: 0; height: 1px; background: var(--rule); pointer-events: none; }
+.tr:last-child::after { left: 0; right: 0; }
+.td { display: flex; flex-direction: column; justify-content: center; min-width: 0; padding: 13.5px 16px; font: 400 13px/18px var(--font); color: var(--ink); white-space: nowrap; }
+.td.r { align-items: flex-end; text-align: right; }
+.td .cap { display: block; margin-top: 4px; font: 400 12px/16px var(--font); color: var(--text-2); white-space: nowrap; }
+.td .muted { color: var(--text-2); }
+.td .strong { font-weight: 600; }
+.td .num b { font-weight: 600; }
+.td .num { display: flex; flex-direction: column; align-items: flex-end; }
+/* Title fit=Fade: wider than the column, the words fade out at the end (48, the owner's), never «…» */
+.fit { display: block; min-width: 0; max-width: 100%; overflow: hidden; white-space: nowrap; -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent); }
+.fit.fits { -webkit-mask-image: none; mask-image: none; }
+.t-name:hover { text-decoration: underline; text-underline-offset: 3px; }
+.td .reason { max-width: 200px; }
+.td .formats { max-width: 150px; }
+.td.person { flex-direction: row; justify-content: flex-start; align-items: center; gap: 8px; }
+.p-txt { display: flex; flex-direction: column; min-width: 0; }
+.av { width: 24px; height: 24px; flex: none; border-radius: 12px; background: var(--av-row); color: #fff; font: 400 11px/24px var(--font); text-align: center; }
+.dir { display: inline-flex; align-items: center; gap: 8px; }
+.dir i { width: 10px; height: 10px; border-radius: 50%; background: var(--c); }
+.chip { display: inline-flex; align-self: flex-start; align-items: center; height: 26px; padding: 0 12px; border-radius: 8px; font: 400 12px/16px var(--font); white-space: nowrap; }
+.chip-ok { background: var(--ok-bg); color: var(--ok); }
+.chip-n { background: var(--chip-n); color: var(--text-2); }
+.acts { display: flex; align-items: center; justify-content: flex-end; gap: 12px; }
+.acts .sep { width: 4px; height: 4px; border-radius: 2px; background: #cccccc; }
+.ibtn { display: grid; place-items: center; width: 16px; height: 16px; color: var(--text-2); transition: color .2s; }
+.ibtn:hover { color: var(--ink); }
+.tempty { padding: 48px 27px; font: 400 13px/18px var(--font); color: var(--text-2); text-align: center; }
+
+/* a narrow card: every row becomes a small block, the head goes */
+@container tcard (max-width: 1000px) {
+  .toolbar { padding: 8px 16px 16px; }
+  .field { width: 100%; }
+  .dd { flex: 1 1 160px; }
+  .dd-trigger { width: 100%; }
+  .tgrid { display: block; }
+  .thead { display: none; }
+  .tr { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px 16px; padding: 14px 16px; }
+  .tr::after { left: 16px; right: 16px; }
+  .td { padding: 0; }
+  .td.r { align-items: flex-start; text-align: left; }
+  .td .num { align-items: flex-start; }
+  .td.c-name { grid-column: 1 / -1; }
+  .td.person { flex-wrap: wrap; }
+  /* the cells are columns, so the label must not take a basis: 100 % of a column is its height (it squeezed the caps) */
+  .td[data-k]::before { content: attr(data-k); flex: none; margin-bottom: 4px; font: 600 11px/14px var(--font); text-transform: uppercase; color: var(--text-3); }
+  .td.person[data-k]::before { flex-basis: 100%; }
+  .acts { justify-content: flex-start; }
+}
 
 .tooltip { position: fixed; z-index: 10; pointer-events: none; padding: 10px 12px; border-radius: 10px; background: var(--inverse); color: #fff; font: 400 12px/16px var(--font); }
 .tooltip b { font: 600 13px/18px var(--font); }
 .tooltip span { color: var(--on-inverse-2); }
 
-/* narrow: period first, the slot under it, the tab last so it still grows out of the sheet */
+/* a desktop window: the page is exactly its height and never scrolls; the log keeps the rows that fit, the tasks
+   table scrolls inside its own card under a sticky head */
+@media (min-width: 1200px) and (min-height: 640px) {
+  .main { height: 100vh; height: 100dvh; display: flex; flex-direction: column; }
+  .dash { flex: 1; min-height: 0; width: 100%; display: flex; flex-direction: column; }
+  .dash-top { flex: none; padding-top: 24px; }
+  .dash-sheet { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .dash-grid { flex: 1; min-height: 0; grid-template-columns: minmax(0, 1fr) 360px; grid-template-rows: auto minmax(0, 1fr); }
+  .row-a, .row-b { grid-column: 1; }
+  .row-b { min-height: 0; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .dc-log { grid-column: 2; grid-row: 1 / span 2; overflow: hidden; }
+  .dc-log .events { flex: 1; min-height: 0; overflow: hidden; }
+  /* the plates of row B have the row's height, so their tiles fit it: short rows lose the «Показать» line first */
+  .row-b > .bcard { min-height: 0; overflow: hidden; container: plate / size; }
+  .row-b .tiles { flex: 1; min-height: 0; grid-template-rows: repeat(2, minmax(0, 1fr)); } /* two rows always: two people get the directions' tile height */
+  .row-b .tile { min-height: 0; }
+  .tview { flex: 1; min-height: 0; }
+  .tcard { flex: 1; min-height: 0; }
+  .tbl { flex: 1; min-height: 0; overflow: auto; }
+}
+@media (min-width: 1500px) and (min-height: 640px) { .dash-grid { grid-template-columns: minmax(0, 1fr) 402px; } }
+/* a low window: the work list keeps three rows, the plates under it get the room */
+@media (min-width: 1200px) and (min-height: 640px) and (max-height: 880px) { .wrow:nth-child(n+4) { display: none; } }
+@container plate (max-height: 380px) {
+  .tile { padding: 12px 16px; gap: 2px; }
+  .tile .dot { top: 16px; }
+  .tile-act { display: none; }
+}
+/* a very low row: the tile lies on its side, the number on the right of its words */
+@container plate (max-height: 290px) {
+  .tile { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-rows: auto auto; align-content: center; gap: 2px 0; padding: 10px 16px; }
+  .tile .dot { position: static; grid-column: 1; grid-row: 1; align-self: center; width: 10px; height: 10px; margin-right: 8px; }
+  .tile-label { grid-column: 2; grid-row: 1; padding-right: 12px; white-space: nowrap; overflow: hidden; }
+  .tile-cap { grid-column: 1 / 3; grid-row: 2; white-space: nowrap; overflow: hidden; }
+  .tile-value { grid-column: 3; grid-row: 1 / span 2; align-self: center; font-size: 20px; line-height: 26px; }
+}
+
+/* narrow: period first, the tab under it so it still grows out of the sheet */
 @media (max-width: 800px) {
   .dash-top { flex-wrap: wrap; padding-top: 16px; }
   .dash-period { order: -2; width: 100%; margin-left: 0; }
-  .dash-slot { order: -1; width: 100%; height: 64px; margin-bottom: 8px; }
+  .dash-period { margin-bottom: 8px; }
   .dash-tab { width: 100%; height: auto; }
   .dash-tab::after { display: none; }
   .dash-sheet { border-radius: 0 0 24px 24px; }
 }
 @media (max-width: 600px) {
   .dash-sheet { padding: 8px; }
+  .ftabs { overflow-x: auto; scrollbar-width: none; }
+  .ftabs::-webkit-scrollbar { display: none; }
+  .ftab { padding: 0 18px; }
   .tiles { grid-template-columns: minmax(0, 1fr); }
 }
 @media (prefers-reduced-motion: reduce) { .tile, .dash-sheet { transition: none; } }

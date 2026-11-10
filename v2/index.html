@@ -14,17 +14,16 @@
 <body>
   <main class="main" id="app" aria-busy="true">
     <section class="dash">
-      <!-- top: the folder tab grows out of the sheet, a white slot, the period on the right -->
+      <!-- top: the folder tab grows out of the sheet, the period on the right -->
       <header class="dash-top">
         <div class="dash-tab">
-          <span class="dt-label" id="scopeLabel">Все ролики</span>
+          <span class="dt-head">
+            <button class="pbtn dt-back" id="backBtn" type="button" aria-label="Назад к дашборду" hidden><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            <span class="dt-label" id="scopeLabel">Все ролики</span>
+          </span>
           <span class="dt-value" id="tabValue">—</span>
           <span class="dt-cap" id="tabCap">—</span>
         </div>
-        <a class="dash-slot" href="../" id="fullLink">
-          <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3.75" y="3.75" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.5"/><rect x="13.25" y="3.75" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.5"/><rect x="3.75" y="13.25" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.5"/><rect x="13.25" y="13.25" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.5"/></svg>
-          Подробная версия
-        </a>
         <div class="dash-period">
           <div class="dash-status">
             <span class="pnav">
@@ -45,7 +44,7 @@
 
       <!-- the sheet: lavender board with white plates -->
       <div class="dash-sheet">
-        <div class="dash-grid">
+        <div class="dash-grid" id="dashView">
           <div class="row-a">
             <article class="bcard">
               <div class="bhead">
@@ -109,8 +108,27 @@
             <div class="events" id="events"></div>
           </article>
         </div>
+        <!-- the tasks page: opened from «Последние ролики», the period on top still drives it -->
+        <div class="tview" id="tasksView" hidden>
+          <div class="ftabs" role="tablist" aria-label="Задачи" id="taskTabs">
+            <button class="ftab" role="tab" type="button" data-tab="done">С роликами<span class="ftab-n" id="nDone"></span></button>
+            <button class="ftab" role="tab" type="button" data-tab="current">В работе<span class="ftab-n" id="nCurrent"></span></button>
+            <button class="ftab" role="tab" type="button" data-tab="nolink">Без роликов<span class="ftab-n" id="nNolink"></span></button>
+          </div>
+          <article class="tcard" id="tcard">
+            <div class="toolbar">
+              <label class="field">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M16.4 16.4L20 20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.5"/></svg>
+                <input id="taskSearch" type="search" placeholder="Поиск задачи" aria-label="Поиск задачи" autocomplete="off">
+              </label>
+              <div class="dd" id="dirFilter" data-label="Направление"></div>
+              <div class="dd" id="personFilter" data-label="Моушен"></div>
+            </div>
+            <div class="tbl"><div class="tgrid" id="tgrid" role="table" aria-label="Задачи"></div></div>
+            <p class="tempty" id="tEmpty" hidden></p>
+          </article>
+        </div>
       </div>
-      <p class="foot" id="foot"></p>
     </section>
   </main>
   <div class="tooltip" id="tooltip" role="status" hidden></div>

@@ -14,7 +14,7 @@
 <body>
   <main class="main" id="app" aria-busy="true">
     <section class="dash">
-      <!-- top: the period tabs grow out of the sheet on the left, the range sits inside the open one; on the tasks page the way back on the right -->
+      <!-- top: the period tabs grow out of the sheet on the left, the range sits inside the open one -->
       <header class="dash-top">
         <div class="ptabs" role="tablist" aria-label="Период" id="periodTabs">
           <div class="ptab" data-mode="day"><button class="ptab-btn" role="tab" type="button" data-mode="day">День</button></div>
@@ -22,7 +22,6 @@
           <div class="ptab" data-mode="month"><button class="ptab-btn" role="tab" type="button" data-mode="month">Месяц</button></div>
           <div class="ptab" data-mode="year"><button class="ptab-btn" role="tab" type="button" data-mode="year">Год</button></div>
         </div>
-        <button class="backbtn" id="backBtn" type="button" hidden><svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Дашборд</button>
       </header>
 
       <!-- the range: inside the open period tab; on a phone it moves to the top of the sheet -->
@@ -108,6 +107,7 @@
           </div>
           <article class="tcard" id="tcard">
             <div class="toolbar">
+              <button class="backbtn" id="backBtn" type="button" aria-label="Назад к дашборду" title="Назад к дашборду"><svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
               <label class="field">
                 <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M16.4 16.4L20 20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.5"/></svg>
                 <input id="taskSearch" type="search" placeholder="Поиск задачи" aria-label="Поиск задачи" autocomplete="off">

@@ -69,8 +69,9 @@ p, h1, h2 { margin: 0; }
 .rbtn:disabled { color: var(--text-3); cursor: default; }
 .range-label { min-width: 176px; padding: 0 8px; text-align: center; font: 600 18px/24px var(--font); color: var(--ink); white-space: nowrap; }
 .range-slot:empty { display: none; }
-.backbtn { margin: 0 0 8px auto; flex: none; height: 48px; padding: 0 20px 0 14px; border-radius: 12px; background: var(--surface); display: inline-flex; align-items: center; gap: 8px; font: 500 14px/20px var(--font); color: var(--ink); transition: background .2s; }
-.backbtn:hover { background: var(--tile); }
+/* the way back, first in the toolbar: a tint button, no edge (baseline rule 7) */
+.backbtn { flex: none; width: 40px; height: 40px; border-radius: 12px; background: var(--tint); display: grid; place-items: center; color: var(--ink); transition: background .2s; }
+.backbtn:hover { background: var(--field); }
 .load-error { margin-bottom: 16px; font: 400 13px/18px var(--font); color: var(--text-2); }
 
 /* the sheet and its grid */
@@ -242,7 +243,7 @@ p, h1, h2 { margin: 0; }
 /* a narrow card: every row becomes a small block, the head goes */
 @container tcard (max-width: 1000px) {
   .toolbar { padding: 8px 16px 16px; }
-  .field { width: 100%; }
+  .field { flex: 1 1 200px; width: auto; }
   .dd { flex: 1 1 160px; }
   .dd-trigger { width: 100%; }
   .tgrid { display: block; }
@@ -304,7 +305,6 @@ p, h1, h2 { margin: 0; }
 /* narrow: period first, the tab under it so it still grows out of the sheet */
 @media (max-width: 800px) {
   .dash-top { flex-wrap: wrap; gap: 0; padding-top: 16px; }
-  .backbtn { order: -1; margin: 0 0 16px; }
   .ptabs { width: 100%; }
   .ptab { flex: 1; min-width: 0; height: 52px; }
   .ptab.is-on { padding-right: 0; }

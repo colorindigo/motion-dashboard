@@ -205,7 +205,6 @@ function render() {
   const tasks = state.view === 'tasks';
   $('dashView').hidden = tasks;
   $('tasksView').hidden = !tasks;
-  $('backBtn').hidden = !tasks;
   document.title = tasks ? 'Задачи · Motion Design · v2' : 'Motion Design · v2';
   if (tasks) renderTasksPage(a, b);
   else renderDashboard(a, b, now, isCurrent, end);

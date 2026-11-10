@@ -1,14 +1,18 @@
-// Motion Design dashboard — reads data/data.json (built by scripts/sync.mjs) and renders everything client-side.
+// Motion Design — the Vault Custody dashboard layout over data/data.json.
+// The hash keeps the period and filters (m, d, dir, p); v=tasks and tab=… open the tasks page.
 
 const $ = (id) => document.getElementById(id);
-const SVGNS = 'http://www.w3.org/2000/svg';
 const DAY = 864e5;
 const NBSP = ' ';
-const SEP = `${NBSP}${NBSP}·  `; // rule 29: two non-breaking spaces before the dot, two plain after
+const SEP = `${NBSP}${NBSP}·  `; // two non-breaking spaces before the dot, two plain after (baseline rule 29)
 const nf = new Intl.NumberFormat('ru-RU');
 const nf1 = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 1 });
+const DIR_COLOR = { buying: 'var(--dir-buying)', viral: 'var(--dir-viral)', lab: 'var(--dir-lab)', internal: 'var(--dir-internal)' };
 
-const state = { data: null, mode: 'year', anchor: startOfDay(new Date()), direction: '', person: '', tab: 'done', showAll: false };
+const LOG_ROWS = 10;
+const TABS = ['done', 'current', 'nolink'];
+const state = { data: null, mode: 'year', anchor: startOfDay(new Date()), direction: '', person: '', view: 'dash', tab: 'done', q: '', sort: null };
+const dropdowns = {};
 
 /* ───────── helpers ───────── */
 function h(tag, attrs = {}, ...kids) {
@@ -17,17 +21,17 @@ function h(tag, attrs = {}, ...kids) {
     if (v == null || v === false) continue;
     if (k === 'class') el.className = v;
     else if (k === 'text') el.textContent = v;
+    else if (k === 'style') el.setAttribute('style', v);
     else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
     else el.setAttribute(k, v === true ? '' : v);
   }
   for (const kid of kids.flat()) if (kid != null && kid !== false) el.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
   return el;
 }
-function s(tag, attrs = {}, ...kids) {
-  const el = document.createElementNS(SVGNS, tag);
-  for (const [k, v] of Object.entries(attrs)) if (v != null) k === 'text' ? (el.textContent = v) : el.setAttribute(k, v);
-  for (const kid of kids.flat()) if (kid) el.append(kid);
-  return el;
+function svg(markup) {
+  const t = document.createElement('template');
+  t.innerHTML = markup.trim();
+  return t.content.firstChild;
 }
 function plural(n, [one, few, many]) {
   const a = Math.abs(n) % 100, b = a % 10;
@@ -39,13 +43,15 @@ function plural(n, [one, few, many]) {
 const W_VIDEOS = ['ролик', 'ролика', 'роликов'];
 const W_FILES = ['файл', 'файла', 'файлов'];
 const W_TASKS = ['задача', 'задачи', 'задач'];
+const W_PEOPLE = ['моушен', 'моушена', 'моушенов'];
+const W_TASKS_ACC = ['задачу', 'задачи', 'задач'];
 
 function startOfDay(d) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
 function startOf(mode, d) {
   const x = startOfDay(d);
   if (mode === 'week') x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
   if (mode === 'month') x.setDate(1);
-  if (mode === 'year') { x.setMonth(0, 1); }
+  if (mode === 'year') x.setMonth(0, 1);
   return x;
 }
 function shift(mode, d, n) {
@@ -56,46 +62,37 @@ function shift(mode, d, n) {
   if (mode === 'year') x.setFullYear(x.getFullYear() + n, 0, 1);
   return x;
 }
-function range(mode, anchor) { const a = startOf(mode, anchor); return [a, startOf(mode, shift(mode, a, 1))]; }
-
-const fmtDayMonth = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' });
-const fmtDayMonthShort = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short' });
-const fmtMonthYear = new Intl.DateTimeFormat('ru-RU', { month: 'long', year: 'numeric' });
-const fmtWeekday = new Intl.DateTimeFormat('ru-RU', { weekday: 'short' });
-const fmtMonthShort = new Intl.DateTimeFormat('ru-RU', { month: 'short' });
-const fmtTime = new Intl.DateTimeFormat('ru-RU', { hour: '2-digit', minute: '2-digit' });
+const range = (mode, anchor) => { const a = startOf(mode, anchor); return [a, startOf(mode, shift(mode, a, 1))]; };
+const fDayMonth = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' });
+const fDayShort = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short' });
+const fMonthYear = new Intl.DateTimeFormat('ru-RU', { month: 'long', year: 'numeric' });
+const fMonthShort = new Intl.DateTimeFormat('ru-RU', { month: 'short' });
+const fWeekday = new Intl.DateTimeFormat('ru-RU', { weekday: 'short' });
+const fTime = new Intl.DateTimeFormat('ru-RU', { hour: '2-digit', minute: '2-digit' });
 const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
-const monthGen = (d) => fmtDayMonth.format(d).replace(/^\d+\s/, '');
+const monthGen = (d) => fDayMonth.format(d).replace(/^\d+\s/, '');
+const short = (d) => fDayShort.format(d).replace('.', '');
 
 function periodLabel(mode, anchor) {
   const [a, b] = range(mode, anchor);
   const last = new Date(b - DAY);
-  if (mode === 'day') return `${cap(fmtWeekday.format(a))}, ${fmtDayMonth.format(a)}`;
-  if (mode === 'week') {
-    return a.getMonth() === last.getMonth()
-      ? `${a.getDate()}–${last.getDate()}${NBSP}${monthGen(a)}`
-      : `${fmtDayMonthShort.format(a)} – ${fmtDayMonthShort.format(last)}`;
-  }
-  if (mode === 'month') return cap(fmtMonthYear.format(a)).replace(/\s*г\.$/, '');
-  return String(a.getFullYear());
+  if (mode === 'day') return `${cap(fWeekday.format(a))}, ${fDayMonth.format(a)}`;
+  if (mode === 'week') return a.getMonth() === last.getMonth() ? `${a.getDate()}–${last.getDate()}${NBSP}${monthGen(a)}` : `${short(a)} – ${short(last)}`;
+  if (mode === 'month') return cap(fMonthYear.format(a)).replace(/\s*г\.$/, '');
+  return `${a.getFullYear()} год`;
 }
-function prevPhrase(mode) { return { day: 'вчерашнему дню', week: 'прошлой неделе', month: 'прошлому месяцу', year: 'прошлому году' }[mode]; }
-function prevName(mode) { return { day: 'вчера', week: 'прошлая неделя', month: 'прошлый месяц', year: 'прошлый год' }[mode]; }
-function fmtDate(iso) {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  const sameYear = d.getFullYear() === new Date().getFullYear();
-  return sameYear ? fmtDayMonthShort.format(d) : `${fmtDayMonthShort.format(d)} ${d.getFullYear()}`;
+function periodPhrase(mode, anchor) {
+  const [a] = range(mode, anchor);
+  if (mode === 'day') return `За ${fDayMonth.format(a)}`;
+  if (mode === 'week') return `За неделю ${periodLabel(mode, anchor)}`;
+  if (mode === 'month') return `За ${fMonthYear.format(a).replace(/\s*г\.$/, '')}`;
+  return `За ${a.getFullYear()} год`;
 }
-function fmtStamp(iso) {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  return `${fmtDayMonthShort.format(d)}, ${fmtTime.format(d)}`;
-}
+const prevPhrase = (mode) => ({ day: 'вчерашнему дню', week: 'прошлой неделе', month: 'прошлому месяцу', year: 'прошлому году' }[mode]);
 function niceMax(v) {
   if (v <= 4) return 4;
   const p = 10 ** Math.floor(Math.log10(v));
-  for (const m of [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]) if (m * p >= v) return m * p;
+  for (const m of [1, 2, 2.5, 3, 4, 5, 6, 8, 10]) if (m * p >= v) return m * p;
   return 10 * p;
 }
 function workdays(a, b) {
@@ -103,20 +100,317 @@ function workdays(a, b) {
   for (let t = new Date(a); t < b; t.setDate(t.getDate() + 1)) if (t.getDay() % 6 !== 0) n++;
   return n;
 }
+const gcd = (x, y) => (y ? gcd(y, x % y) : x);
+// 1080x1920 → 9:16; a size without a short ratio stays as it is
+function aspect(r) {
+  const m = /^(\d+)x(\d+)$/.exec(r || '');
+  if (!m) return '';
+  const w = +m[1], hh = +m[2], g = gcd(w, hh);
+  return w / g <= 21 && hh / g <= 21 ? `${w / g}:${hh / g}` : `${w}×${hh}`;
+}
+function fmtDate(ms) {
+  const d = new Date(ms);
+  return d.getFullYear() === new Date().getFullYear() ? short(d) : `${short(d)} ${d.getFullYear()}`;
+}
+const initials = (name) => (name || '').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('') || '—';
+// Fade the end only for words that really overflow; measured again once the web font replaces the wider fallback.
+function measureFits(root) {
+  const run = () => root.querySelectorAll('[data-fit]').forEach((el) => el.classList.toggle('fits', el.scrollWidth <= el.clientWidth + 1));
+  requestAnimationFrame(run);
+  document.fonts?.ready.then(run);
+}
 
-/* ───────── dropdown: MUI Select behaviour ─────────
-   Trigger shows the value with the ArrowDropDown triangle; the menu is an anchored listbox under it.
-   Keyboard as in MUI: ↓/↑/Enter/Space open, ↑↓ Home End move, Enter/Space pick, Esc closes, Tab leaves. */
-const dropdowns = {};
+/* ───────── data ───────── */
+async function load() {
+  const res = await fetch(`data/data.json?t=${Date.now()}`, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`data.json ${res.status}`);
+  const data = await res.json();
+  data.taskById = new Map(data.tasks.map((t) => [t.id, t]));
+  data.videosByTask = new Map();
+  for (const v of data.videos) {
+    v.time = Date.parse(v.at);
+    if (!data.videosByTask.has(v.t)) data.videosByTask.set(v.t, []);
+    data.videosByTask.get(v.t).push(v);
+  }
+  data.dirLabel = Object.fromEntries(data.config.directions.map((d) => [d.id, d.label]));
+  return data;
+}
+function videoOk(v, { ignoreDirection = false, ignorePerson = false } = {}) {
+  const t = state.data.taskById.get(v.t);
+  if (!t) return false;
+  if (!ignoreDirection && state.direction && t.direction !== state.direction) return false;
+  if (!ignorePerson && state.person && !v.by.includes(state.person)) return false;
+  return true;
+}
+const videosIn = (a, b, opts) => state.data.videos.filter((v) => v.time >= +a && v.time < +b && videoOk(v, opts));
+const creatives = (list) => new Set(list.map((v) => `${v.t}|${v.k}`)).size;
+const tasksOf = (list) => new Set(list.map((v) => v.t)).size;
+
+/* ───────── hash ───────── */
+function readHash() {
+  const p = new URLSearchParams(location.hash.slice(1));
+  if (['day', 'week', 'month', 'year'].includes(p.get('m'))) state.mode = p.get('m');
+  if (p.get('d') && !Number.isNaN(Date.parse(p.get('d')))) state.anchor = startOfDay(new Date(p.get('d') + 'T00:00:00'));
+  state.direction = p.get('dir') || '';
+  state.person = p.get('p') || '';
+  readView(p);
+}
+function readView(p = new URLSearchParams(location.hash.slice(1))) {
+  state.view = p.get('v') === 'tasks' ? 'tasks' : 'dash';
+  state.tab = TABS.includes(p.get('tab')) ? p.get('tab') : 'done';
+}
+function hashString() {
+  const p = new URLSearchParams();
+  if (state.mode !== 'year') p.set('m', state.mode); // the year is the start: a link without m opens it
+  const a = state.anchor;
+  if (+startOf(state.mode, a) !== +startOf(state.mode, new Date())) p.set('d', `${a.getFullYear()}-${String(a.getMonth() + 1).padStart(2, '0')}-${String(a.getDate()).padStart(2, '0')}`);
+  if (state.direction) p.set('dir', state.direction);
+  if (state.person) p.set('p', state.person);
+  if (state.view === 'tasks') {
+    p.set('v', 'tasks');
+    if (state.tab !== 'done') p.set('tab', state.tab);
+  }
+  return p.toString();
+}
+// replaceState keeps the entry's marker, so the back arrow knows the dashboard is one step behind
+const writeHash = () => history.replaceState(history.state, '', '#' + hashString());
+function openTasks(tab = 'done') {
+  const fromDash = state.view !== 'tasks';
+  state.view = 'tasks'; state.tab = tab; state.sort = null;
+  if (fromDash) history.pushState({ page: 'tasks' }, '', '#' + hashString());
+  render();
+  scrollTo({ top: 0 });
+}
+function closeTasks() {
+  if (history.state?.page === 'tasks') { history.back(); return; } // popstate renders the dashboard
+  state.view = 'dash';
+  render();
+  scrollTo({ top: 0 });
+}
+
+/* ───────── render ───────── */
+function render() {
+  if (!state.data) return;
+  const { data } = state;
+  const [a, b] = range(state.mode, state.anchor);
+  const now = new Date();
+  const isCurrent = a <= now && now < b;
+  const end = isCurrent ? now : b;
+
+  placeRange();
+  $('periodLabel').textContent = periodLabel(state.mode, state.anchor);
+  $('nextPeriod').disabled = shift(state.mode, a, 1) > now;
+
+  const tasks = state.view === 'tasks';
+  $('dashView').hidden = tasks;
+  $('tasksView').hidden = !tasks;
+  document.title = tasks ? 'Задачи · Motion Design' : 'Motion Design';
+  if (tasks) renderTasksPage(a, b);
+  else renderDashboard(a, b, now, isCurrent, end);
+  measureFits(document);
+  writeHash();
+}
+
+// the range lives inside the open period tab; on a phone the tabs are too narrow, so it goes to the top of the sheet
+const PHONE = matchMedia('(max-width: 800px)');
+function placeRange() {
+  for (const tab of $('periodTabs').querySelectorAll('.ptab')) {
+    const on = tab.dataset.mode === state.mode;
+    tab.classList.toggle('is-on', on);
+    tab.querySelector('.ptab-btn').setAttribute('aria-selected', String(on));
+  }
+  const host = PHONE.matches ? $('rangeSlot') : $('periodTabs').querySelector('.ptab.is-on');
+  const range = $('range');
+  if (range.parentElement !== host) {
+    const moved = range.parentElement.classList.contains('ptab');
+    host.append(range);
+    range.classList.remove('is-moved');
+    if (moved) { void range.offsetWidth; range.classList.add('is-moved'); }
+  }
+  // the first tab open: the sheet's own corner under it is square
+  $('sheet').classList.toggle('is-joined', state.mode === 'day' && !PHONE.matches);
+}
+
+function renderDashboard(a, b, now, isCurrent, end) {
+  const { data } = state;
+  const vids = videosIn(a, b);
+  const nVideos = creatives(vids);
+  const pa = shift(state.mode, a, -1);
+  const pb = isCurrent ? new Date(+pa + (now - a)) : a;
+  const pVideos = creatives(videosIn(pa, pb));
+
+  renderVideosCard(vids, nVideos, pVideos, isCurrent);
+  renderDaysCard(a, b, end);
+  renderWork();
+  renderDirectionTiles(a, b);
+  renderPeopleTiles(vids);
+  renderLog(vids);
+  requestAnimationFrame(fitLog);
+  document.fonts?.ready.then(fitLog);
+}
+
+function renderVideosCard(vids, nVideos, pVideos, isCurrent) {
+  $('aCap').textContent = periodPhrase(state.mode, state.anchor);
+  $('aValue').textContent = nf.format(nVideos);
+  const diff = nVideos - pVideos;
+  $('aSub').textContent = `${diff > 0 ? '+' : diff < 0 ? '−' : '±'}${nf.format(Math.abs(diff))} к${NBSP}${prevPhrase(state.mode)}${isCurrent ? ' на этот день' : ''}`;
+  const dirs = state.data.config.directions;
+  const counts = dirs.map((d) => ({ ...d, n: creatives(vids.filter((v) => state.data.taskById.get(v.t).direction === d.id)) }));
+  const total = counts.reduce((s, d) => s + d.n, 0);
+  const split = $('split');
+  split.classList.toggle('is-empty', !total);
+  split.setAttribute('aria-label', total ? counts.map((d) => `${d.label} ${Math.round((d.n / total) * 100)}%`).join(', ') : 'Роликов нет');
+  split.replaceChildren(...(total ? counts.filter((d) => d.n).map((d) => h('i', { style: `--c:${DIR_COLOR[d.id]};width:calc((100% - ${(counts.filter((x) => x.n).length - 1) * 2}px) * ${d.n / total})`, title: `${d.label}: ${d.n}` })) : []));
+  $('splitLegend').replaceChildren(...counts.map((d) => h('span', { class: 'legend-item' }, h('i', { style: `--c:${DIR_COLOR[d.id]}` }), `${d.label}${NBSP}${NBSP}${total ? Math.round((d.n / total) * 100) : 0}%`)));
+}
+
+function buckets(a, b) {
+  const out = [];
+  if (state.mode === 'year') {
+    for (let m = 0; m < 12; m++) {
+      const s0 = new Date(a.getFullYear(), m, 1), s1 = new Date(a.getFullYear(), m + 1, 1);
+      out.push({ a: s0, b: s1, label: fMonthShort.format(s0).replace('.', ''), long: cap(fMonthYear.format(s0)).replace(/\s*г\.$/, '') });
+    }
+    return out;
+  }
+  const from = state.mode === 'day' ? new Date(+a - 13 * DAY) : a;
+  for (let d = new Date(from); d < b; d.setDate(d.getDate() + 1)) {
+    const s0 = new Date(d), s1 = new Date(d); s1.setDate(s1.getDate() + 1);
+    out.push({ a: s0, b: s1, label: short(s0), long: `${cap(fWeekday.format(s0))}, ${fDayMonth.format(s0)}` });
+  }
+  return out;
+}
+
+function renderDaysCard(a, b, end) {
+  const year = state.mode === 'year';
+  $('bTitle').textContent = year ? 'По месяцам' : state.mode === 'day' ? 'За 14 дней' : 'По дням';
+  const wd = Math.max(1, workdays(a, end));
+  const value = creatives(videosIn(a, b)) / wd;
+  const shown = Math.round(value * 10) / 10;
+  $('bValue').textContent = nf1.format(shown);
+  $('bSub').textContent = `${Number.isInteger(shown) ? plural(shown, W_VIDEOS) : 'ролика'} в рабочий день`;
+  const bs = buckets(a, b).map((x) => ({ ...x, n: creatives(videosIn(x.a, x.b)) }));
+  const max = Math.max(1, ...bs.map((x) => x.n));
+  const best = bs.reduce((m, x) => (x.n > m.n ? x : m), bs[0]);
+  $('bCap').textContent = best && best.n ? `Лучший ${year ? 'месяц' : 'день'} — ${year ? best.long.toLowerCase() : fDayMonth.format(best.a)}, ${nf.format(best.n)} ${plural(best.n, W_VIDEOS)}` : 'Роликов в этом периоде нет';
+  const today = startOfDay(new Date());
+  const tt = $('tooltip');
+  $('bars').replaceChildren(...bs.map((x) => {
+    const level = x.n / max;
+    const isNow = year ? x.a <= today && today < x.b : +x.a === +(state.mode === 'day' ? startOfDay(state.anchor) : today);
+    const bar = h('i', { class: isNow ? 'is-now' : '', style: x.n ? `--h:${Math.max(4, Math.round(level * 24))}px;--o:${(0.3 + 0.7 * level).toFixed(2)}` : '', tabindex: '0', 'aria-label': `${x.long}: ${x.n} ${plural(x.n, W_VIDEOS)}` });
+    const show = (ev) => {
+      tt.replaceChildren(h('span', { text: x.long }), h('br'), h('b', { text: `${nf.format(x.n)} ${plural(x.n, W_VIDEOS)}` }));
+      tt.hidden = false;
+      const r = tt.getBoundingClientRect();
+      const px = ev.clientX ?? bar.getBoundingClientRect().left, py = ev.clientY ?? bar.getBoundingClientRect().top;
+      tt.style.left = `${Math.min(innerWidth - r.width - 8, px + 12)}px`;
+      tt.style.top = `${Math.max(8, py - r.height - 12)}px`;
+    };
+    bar.addEventListener('pointermove', show);
+    bar.addEventListener('focus', () => show({}));
+    bar.addEventListener('pointerleave', () => { tt.hidden = true; });
+    bar.addEventListener('blur', () => { tt.hidden = true; });
+    return bar;
+  }));
+  $('barsFrom').textContent = bs[0]?.label || '';
+  $('barsTo').textContent = bs[bs.length - 1]?.label || '';
+}
+
+function renderWork() {
+  const { data } = state;
+  const order = data.config.statuses.order;
+  const cur = data.tasks.filter((t) => data.config.statuses.current.includes(t.status)
+    && (!state.direction || t.direction === state.direction) && (!state.person || t.assignees.includes(state.person)))
+    .sort((x, y) => order.indexOf(x.status) - order.indexOf(y.status) || (y.createdAt > x.createdAt ? 1 : -1));
+  $('cValue').textContent = nf.format(cur.length);
+  $('cSub').textContent = `${plural(cur.length, W_TASKS)} сейчас`;
+  const rows = cur.slice(0, 4).map((t) => h('div', { class: 'wrow' },
+    h('a', { class: 'n', 'data-fit': '', href: t.url, target: '_blank', rel: 'noopener', text: t.name || 'Без названия' }),
+    h('span', { class: 's', text: t.status })));
+  $('worklist').replaceChildren(...(rows.length ? rows : [h('p', { class: 'wempty', text: 'Открытых задач нет' })]));
+}
+
+function tile({ label, value, capText, act, pressed, onclick, color }) {
+  return h('button', { class: 'tile', type: 'button', 'aria-pressed': String(!!pressed), onclick },
+    color ? h('i', { class: 'dot', style: `--c:${color}` }) : null,
+    h('span', { class: 'tile-label', text: label }),
+    h('span', { class: 'tile-value', text: value }),
+    h('span', { class: 'tile-cap', text: capText }),
+    h('span', { class: 'tile-act', text: act }));
+}
+
+function renderDirectionTiles(a, b) {
+  // the direction tiles show every direction, whatever is picked, so the picked one can be switched off
+  const all = videosIn(a, b, { ignoreDirection: true });
+  const total = creatives(all);
+  $('dirTiles').replaceChildren(...state.data.config.directions.map((d) => {
+    const mine = all.filter((v) => state.data.taskById.get(v.t).direction === d.id);
+    const n = creatives(mine), nt = tasksOf(mine), on = state.direction === d.id;
+    return tile({
+      label: d.label, value: nf.format(n), color: DIR_COLOR[d.id],
+      capText: `${nf.format(nt)} ${plural(nt, W_TASKS)}${SEP}${total ? Math.round((n / total) * 100) : 0}%`,
+      act: on ? 'Все направления' : 'Показать', pressed: on,
+      onclick: () => { state.direction = on ? '' : d.id; render(); },
+    });
+  }));
+}
+
+function renderPeopleTiles() {
+  const [a, b] = range(state.mode, state.anchor);
+  const all = videosIn(a, b, { ignorePerson: true });
+  const names = new Set(all.flatMap((v) => v.by));
+  if (state.person) names.add(state.person);
+  const rows = [...names].map((n) => {
+    const mine = all.filter((v) => v.by.includes(n));
+    return { n, videos: creatives(mine), tasks: tasksOf(mine) };
+  }).sort((x, y) => y.videos - x.videos || x.n.localeCompare(y.n));
+  $('personTiles').replaceChildren(...(rows.length ? rows.slice(0, 4).map((r) => {
+    const on = state.person === r.n;
+    return tile({
+      label: r.n, value: nf.format(r.videos),
+      capText: `${nf.format(r.tasks)} ${plural(r.tasks, W_TASKS)}`,
+      act: on ? 'Все моушены' : 'Показать', pressed: on,
+      onclick: () => { state.person = on ? '' : r.n; render(); },
+    });
+  }) : [h('p', { class: 'wempty', text: 'За этот период роликов нет' })]));
+}
+
+function renderLog(vids) {
+  const { data } = state;
+  const per = new Map();
+  for (const v of vids) {
+    const e = per.get(v.t) || { keys: new Set(), last: 0 };
+    e.keys.add(v.k); e.last = Math.max(e.last, v.time);
+    per.set(v.t, e);
+  }
+  const list = [...per.entries()].map(([id, e]) => ({ t: data.taskById.get(id), n: e.keys.size, last: e.last })).sort((x, y) => y.last - x.last);
+  const today = startOfDay(new Date());
+  const rows = list.slice(0, LOG_ROWS).map(({ t, n, last }) => {
+    const who = t.assignees[0] || '';
+    const when = new Date(last);
+    const meta = [t.assignees.join(', ') || 'без исполнителя', data.dirLabel[t.direction], `${nf.format(n)} ${plural(n, W_VIDEOS)}`].join(SEP);
+    const href = t.drive ? `https://drive.google.com/drive/folders/${t.drive.id}` : t.url;
+    return h('a', { class: 'ev', href, target: '_blank', rel: 'noopener', title: t.drive ? 'Открыть папку с роликами' : 'Открыть задачу в Notion' },
+      h('span', { class: 'ev-av', text: initials(who), 'aria-hidden': 'true' }),
+      h('span', { class: 'ev-txt' }, h('span', { class: 'ev-name', 'data-fit': '', text: t.name || 'Без названия' }), h('span', { class: 'ev-meta', text: meta })),
+      h('span', { class: 'ev-time', text: +startOfDay(when) === +today ? fTime.format(when) : short(when) }));
+  });
+  const box = $('events');
+  box.replaceChildren(...(rows.length ? rows : [h('p', { class: 'ev-empty', text: 'За этот период роликов нет' })]));
+  // the rest is not unfolded here: the button opens the tasks page with the same period and filters
+  if (list.length) box.append(h('button', { class: 'ev-more', type: 'button', text: list.length > LOG_ROWS ? `Показать все ${nf.format(list.length)}` : 'Подробнее', onclick: () => openTasks('done') }));
+}
+
+/* ───────── MUI-style select: an anchored listbox under a field ───────── */
 function dropdown(host, onChange) {
   const id = host.id;
-  const arrow = s('svg', { class: 'dd-arrow', viewBox: '0 0 24 24', 'aria-hidden': 'true' }, s('path', { d: 'M7 10l5 5 5-5z', fill: 'currentColor' }));
   const valueEl = h('span', { class: 'dd-value', id: `${id}-value` });
-  const trigger = h('button', { class: 'dd-trigger', type: 'button', id: `${id}-btn`, 'aria-haspopup': 'listbox', 'aria-expanded': 'false', 'aria-labelledby': `${id}-label ${id}-value` }, valueEl, arrow);
-  const menu = h('ul', { class: 'dd-menu', role: 'listbox', id: `${id}-menu`, tabindex: '-1', 'aria-labelledby': `${id}-label`, hidden: true });
-  host.replaceChildren(h('span', { class: 'dd-label', id: `${id}-label`, text: host.dataset.label }), trigger, menu);
+  const trigger = h('button', { class: 'dd-trigger', type: 'button', id: `${id}-btn`, 'aria-haspopup': 'listbox', 'aria-expanded': 'false', 'aria-label': host.dataset.label },
+    valueEl, svg('<svg class="ico dd-arrow" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 10.5l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'));
+  const menu = h('ul', { class: 'dd-menu', role: 'listbox', id: `${id}-menu`, tabindex: '-1', 'aria-label': host.dataset.label, hidden: true });
+  host.replaceChildren(trigger, menu);
   let options = [], value = '', focus = -1;
-
   function draw() {
     const cur = options.find((o) => o.value === value) || options[0];
     valueEl.textContent = cur ? cur.label : '';
@@ -159,9 +453,7 @@ function dropdown(host, onChange) {
     if (v !== value) { value = v; draw(); onChange(v); }
   }
   trigger.addEventListener('click', () => (menu.hidden ? open() : close()));
-  trigger.addEventListener('keydown', (e) => {
-    if (['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(e.key)) { e.preventDefault(); open(); }
-  });
+  trigger.addEventListener('keydown', (e) => { if (['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(e.key)) { e.preventDefault(); open(); } });
   menu.addEventListener('keydown', (e) => {
     const last = options.length - 1;
     if (e.key === 'ArrowDown') { e.preventDefault(); setFocus(Math.min(last, focus + 1)); }
@@ -172,466 +464,210 @@ function dropdown(host, onChange) {
     else if (e.key === 'Escape') { e.preventDefault(); close(); }
     else if (e.key === 'Tab') close(false);
   });
-  const api = {
-    setOptions(list) { options = list; draw(); },
-    setValue(v) { value = v; draw(); },
-    close,
-  };
+  const api = { setOptions(list) { options = list; draw(); }, setValue(v) { if (v !== value) { value = v; draw(); } }, close };
   dropdowns[id] = api;
   return api;
 }
 
-/* ───────── data ───────── */
-async function load(bust = false) {
-  const res = await fetch(`data/data.json${bust ? `?t=${Date.now()}` : ''}`, { cache: bust ? 'no-store' : 'default' });
-  if (!res.ok) throw new Error(`data.json ${res.status}`);
-  const data = await res.json();
-  data.taskById = new Map(data.tasks.map((t) => [t.id, t]));
-  for (const v of data.videos) v.time = Date.parse(v.at);
-  data.directionLabel = Object.fromEntries(data.config.directions.map((d) => [d.id, d.label]));
-  return data;
-}
-
-function videoOk(v) {
-  const t = state.data.taskById.get(v.t);
-  if (!t) return false;
-  if (state.direction && t.direction !== state.direction) return false;
-  if (state.person && !v.by.includes(state.person)) return false;
-  return true;
-}
-function taskOk(t) {
-  if (state.direction && t.direction !== state.direction) return false;
-  if (state.person && !t.assignees.includes(state.person)) return false;
-  return true;
-}
-function videosIn(a, b, extra = () => true) {
-  const ta = +a, tb = +b;
-  return state.data.videos.filter((v) => v.time >= ta && v.time < tb && videoOk(v) && extra(v));
-}
-const creatives = (list) => new Set(list.map((v) => `${v.t}|${v.k}`)).size;
-
-/* ───────── state ↔ URL ───────── */
-function readHash() {
-  const p = new URLSearchParams(location.hash.slice(1));
-  if (['day', 'week', 'month', 'year'].includes(p.get('m'))) state.mode = p.get('m');
-  if (p.get('d') && !Number.isNaN(Date.parse(p.get('d')))) state.anchor = startOfDay(new Date(p.get('d') + 'T00:00:00'));
-  state.direction = p.get('dir') || '';
-  state.person = p.get('p') || '';
-  if (['done', 'current', 'nolink'].includes(p.get('tab'))) state.tab = p.get('tab');
-}
-function writeHash() {
-  const p = new URLSearchParams();
-  if (state.mode !== 'year') p.set('m', state.mode); // the year is the start: a link without m opens it
-  const a = state.anchor;
-  const today = startOfDay(new Date());
-  if (+startOf(state.mode, a) !== +startOf(state.mode, today)) p.set('d', `${a.getFullYear()}-${String(a.getMonth() + 1).padStart(2, '0')}-${String(a.getDate()).padStart(2, '0')}`);
-  if (state.direction) p.set('dir', state.direction);
-  if (state.person) p.set('p', state.person);
-  if (state.tab !== 'done') p.set('tab', state.tab);
-  history.replaceState(null, '', '#' + p.toString());
-}
-
-/* ───────── render ───────── */
-function render() {
-  if (!state.data) return; // a resize can fire before data.json arrives
-  const { data } = state;
-  const [a, b] = range(state.mode, state.anchor);
-  const now = new Date();
-  const isCurrent = a <= now && now < b;
-  const end = isCurrent ? now : b;
-
-  // tabs + pager
-  for (const btn of $('periodTabs').querySelectorAll('button')) btn.setAttribute('aria-selected', String(btn.dataset.mode === state.mode));
-  $('periodLabel').textContent = periodLabel(state.mode, state.anchor);
-  $('nextPeriod').disabled = shift(state.mode, a, 1) > now;
-  dropdowns.directionFilter.setValue(state.direction);
-  dropdowns.personFilter.setValue(state.person);
-
-  // period numbers
-  const vids = videosIn(a, b);
-  const nVideos = creatives(vids);
-  const nTasks = new Set(vids.map((v) => v.t)).size;
-
-  // previous period, cut to the same elapsed time when this one is still running
-  const pa = shift(state.mode, a, -1);
-  const pb = isCurrent ? new Date(+pa + (now - a)) : a;
-  const prev = videosIn(pa, pb);
-  const pVideos = creatives(prev);
-  const pTasks = new Set(prev.map((v) => v.t)).size;
-
-  renderHeroGauge(nVideos, a);
-  renderMetric('mVideos', nVideos, '', pVideos, isCurrent, vids.length);
-  renderMetric('mTasks', nTasks, '', pTasks, isCurrent);
-  renderChart(a, b);
-  renderDirections(vids, a, end);
-  renderPeople(vids, a, b);
-  renderPace(vids, a, end);
-  renderStatus();
-  renderTasks(vids, a, b);
-  renderChecks();
-  writeHash();
-}
-
-function renderMetric(id, value, unit, prevValue, isCurrent, files) {
-  $(id).textContent = nf.format(value);
-  $(id + 'Unit').textContent = '';
-  const note = $(id + 'Note');
-  note.replaceChildren();
-  const diff = value - prevValue;
-  const sign = diff > 0 ? '+' : diff < 0 ? '−' : '±';
-  note.title = isCurrent ? `Сравнение с тем же отрезком: ${prevName(state.mode)} на этот момент` : `Сравнение: ${prevName(state.mode)}`;
-  note.append(h('b', { text: `${sign}${nf.format(Math.abs(diff))}` }), ` к${NBSP}${prevPhrase(state.mode)}`);
-  if (files != null) note.append(h('br'), `${nf.format(files)} ${plural(files, W_FILES)}`);
-}
-
-function renderHeroGauge(value, periodStart) {
-  // scale: the best of the last 12 periods, so the knob shows where this one stands
-  let best = value;
-  for (let i = 1; i <= 12; i++) {
-    const s0 = shift(state.mode, periodStart, -i);
-    best = Math.max(best, creatives(videosIn(s0, shift(state.mode, s0, 1))));
+/* ───────── the tasks page ───────── */
+const taskOk = (t) => (!state.direction || t.direction === state.direction) && (!state.person || t.assignees.includes(state.person));
+function summarize(list) {
+  const res = new Map(), by = new Set(), keys = new Set();
+  let first = Infinity, last = 0;
+  for (const v of list) {
+    keys.add(v.k);
+    const r = aspect(v.r);
+    if (r) res.set(r, (res.get(r) || 0) + 1);
+    for (const n of v.by) by.add(n);
+    first = Math.min(first, v.time); last = Math.max(last, v.time);
   }
-  const max = niceMax(best || 4);
-  const svg = $('heroGauge');
-  svg.replaceChildren();
-  const R = 230, cx = -30, cy = 179, A = (43 * Math.PI) / 180; // arc 22–336, readout stays inside the 380 box
-  const pt = (t, r = R) => [cx + r * Math.cos(t), cy + r * Math.sin(t)];
-  const [x1, y1] = pt(-A), [x2, y2] = pt(A);
-  svg.append(s('path', { class: 'g-arc', d: `M${x1} ${y1} A${R} ${R} 0 0 1 ${x2} ${y2}` }));
-  svg.append(s('circle', { class: 'g-dot', cx: x1, cy: y1, r: 2 }), s('circle', { class: 'g-dot', cx: x2, cy: y2, r: 2 }));
-  const t = A - 2 * A * Math.min(value / max, 1);
-  const [kx, ky] = pt(t);
-  for (const f of [0, 0.25, 0.5, 1]) {
-    const tl = A - 2 * A * f;
-    const [lx, ly] = pt(tl, R + 22);
-    if (Math.abs(ly - ky) < 44) continue; // the readout sits there — a scale label would collide with it
-    svg.append(s('text', { x: lx, y: ly + 6, text: nf.format(Math.round(max * f)) }));
-  }
-  const knob = s('g', { transform: `translate(${kx - 16} ${ky - 16})` });
-  knob.append(s('circle', { cx: 16, cy: 16, r: 16, fill: '#FEFE02', opacity: 0.25 }), s('circle', { cx: 16, cy: 16, r: 7, fill: '#FEFE02' }));
-  svg.append(knob);
-  svg.append(s('text', { class: 'g-value', x: kx + 44, y: ky + 18, text: nf.format(value) }));
-  svg.append(s('text', { class: 'g-unit', x: kx + 46, y: ky + 42, text: plural(value, W_VIDEOS) }));
-  $('gaugeLabel').textContent = `${nf.format(value)} ${plural(value, W_VIDEOS)} за период, шкала до ${nf.format(max)}`;
+  return { videos: keys.size, files: list.length, formats: [...res].sort((x, y) => y[1] - x[1]).map(([r]) => r), by: [...by], first: list.length ? first : 0, last };
 }
-
-function buckets(a, b) {
-  const out = [];
-  if (state.mode === 'year') {
-    for (let m = 0; m < 12; m++) {
-      const s0 = new Date(a.getFullYear(), m, 1), s1 = new Date(a.getFullYear(), m + 1, 1);
-      out.push({ a: s0, b: s1, label: fmtMonthShort.format(s0).replace('.', ''), long: cap(fmtMonthYear.format(s0)).replace(/\s*г\.$/, '') });
-    }
-    return out;
-  }
-  let from = a, to = b;
-  if (state.mode === 'day') { from = new Date(+a - 13 * DAY); to = b; }
-  for (let d = new Date(from); d < to; d.setDate(d.getDate() + 1)) {
-    const s0 = new Date(d), s1 = new Date(d); s1.setDate(s1.getDate() + 1);
-    const label = state.mode === 'month' ? String(s0.getDate()) : `${fmtWeekday.format(s0)} ${s0.getDate()}`;
-    out.push({ a: s0, b: s1, label, long: `${cap(fmtWeekday.format(s0))}, ${fmtDayMonth.format(s0)}`, weekend: s0.getDay() % 6 === 0 });
-  }
-  return out;
-}
-
-function renderChart(a, b) {
-  const box = $('chart');
-  $('chartTitle').textContent = state.mode === 'year' ? 'Ролики по месяцам' : state.mode === 'day' ? 'Ролики за 14 дней' : 'Ролики по дням';
-  const bs = buckets(a, b).map((x) => {
-    const list = videosIn(x.a, x.b);
-    return { ...x, files: list.length, videos: creatives(list) };
-  });
-  const W = Math.max(box.clientWidth, 280), H = Math.max(box.clientHeight, 230);
-  const padL = 40, padR = 8, padT = 12, padB = 36;
-  const max = niceMax(Math.max(1, ...bs.map((x) => x.files)));
-  const plotW = W - padL - padR, plotH = H - padT - padB;
-  const step = plotW / bs.length;
-  const y = (v) => padT + plotH - (v / max) * plotH;
-  const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: 'img', 'aria-label': `${$('chartTitle').textContent}: столбцы по ${bs.length} отрезкам` });
-  for (const f of [0, 0.5, 1]) {
-    const v = max * f;
-    if (!Number.isInteger(v)) continue; // clean ticks only
-    svg.append(s('text', { class: 'axis', x: 0, y: y(v) + 6, text: nf.format(v) }));
-    if (f === 0) svg.append(s('line', { class: 'grid-line', x1: padL, x2: W - padR, y1: y(0) + 0.5, y2: y(0) + 0.5 }));
-  }
-  const today = startOfDay(new Date());
-  const every = bs.length > 16 ? Math.ceil(bs.length / 8) : 1;
-  const barW = 4, gap = 2;
-  const bar = (x, v, cls) => {
-    if (!v) return null;
-    const top = y(v), r = 2, bottom = y(0);
-    return s('path', { class: cls, d: `M${x} ${bottom}V${top + r}a${r} ${r} 0 0 1 ${r} ${-r}a${r} ${r} 0 0 1 ${r} ${r}V${bottom}Z` });
-  };
-  bs.forEach((x, i) => {
-    const cx = padL + step * i + step / 2;
-    const g = s('g', { class: 'col', tabindex: 0, role: 'img', 'aria-label': `${x.long}: ${x.videos} ${plural(x.videos, W_VIDEOS)}, ${x.files} ${plural(x.files, W_FILES)}` });
-    g.append(s('rect', { class: 'hit', x: cx - step / 2, y: padT, width: step, height: plotH + padB }));
-    const b1 = bar(cx - barW - gap / 2, x.files, 'bar-files');
-    const b2 = bar(cx + gap / 2, x.videos, 'bar-videos');
-    if (b1) g.append(b1);
-    if (b2) g.append(b2);
-    const isNow = state.mode === 'year' ? x.a <= today && today < x.b : +x.a === +startOfDay(state.mode === 'day' ? state.anchor : today);
-    if (i % every === 0 || isNow) g.append(s('text', { class: 'xlab' + (isNow ? ' now' : ''), x: cx, y: H - 8, 'text-anchor': 'middle', text: x.label }));
-    const show = (ev) => tooltip(ev, x.long, [['ролики', x.videos, 'var(--chart-power)'], ['файлы', x.files, 'var(--chart-wind)']]);
-    g.addEventListener('pointermove', show);
-    g.addEventListener('focus', (ev) => show({ clientX: g.getBoundingClientRect().left + step / 2, clientY: g.getBoundingClientRect().top }));
-    g.addEventListener('pointerleave', hideTooltip);
-    g.addEventListener('blur', hideTooltip);
-    svg.append(g);
-  });
-  box.replaceChildren(svg);
-}
-
-function tooltip(ev, head, rows) {
-  const tt = $('tooltip');
-  tt.replaceChildren(h('div', { class: 'tt-head', text: head }), ...rows.map(([k, v, c]) => h('div', { class: 'tt-row' }, h('i', { class: 'tt-key', style: `background:${c}` }), h('b', { text: nf.format(v) }), k)));
-  tt.hidden = false;
-  const r = tt.getBoundingClientRect();
-  let x = ev.clientX + 14, y2 = ev.clientY - r.height - 12;
-  if (x + r.width > innerWidth - 8) x = ev.clientX - r.width - 14;
-  if (y2 < 8) y2 = ev.clientY + 16;
-  tt.style.left = `${x}px`;
-  tt.style.top = `${y2}px`;
-}
-function hideTooltip() { $('tooltip').hidden = true; }
-
-function levelRow({ label, value, small, ratio, pressed, onclick, title }) {
-  const row = h('button', { class: 'level-row' + (value ? '' : ' zero'), type: 'button', 'aria-pressed': String(!!pressed), title, onclick },
-    h('div', { class: 'level-track' }, h('div', { class: 'level-fill', style: `width:${Math.max(ratio, 0) * 100}%` })),
-    h('div', { class: 'level-base' }),
-    h('div', { class: 'level-ticks' }),
-    h('div', { class: 'level-labels' }, h('span', { class: 'lv-label', text: label }), h('span', { class: 'lv-value' }, nf.format(value), small ? h('small', { text: small }) : null)),
-  );
-  return row;
-}
-
-function renderDirections(vids, a, end) {
-  const dirs = state.data.config.directions;
-  const counts = Object.fromEntries(dirs.map((d) => [d.id, creatives(vids.filter((v) => state.data.taskById.get(v.t).direction === d.id))]));
-  const total = Object.values(counts).reduce((x, y) => x + y, 0);
-  const max = Math.max(1, ...Object.values(counts));
-  $('directionRows').replaceChildren(...dirs.map((d) => levelRow({
-    label: d.label,
-    value: counts[d.id],
-    small: total ? `${Math.round((counts[d.id] / total) * 100)}%` : '',
-    ratio: counts[d.id] / max,
-    pressed: state.direction === d.id,
-    title: state.direction === d.id ? 'Снять фильтр' : `Показать только: ${d.label}`,
-    onclick: () => { state.direction = state.direction === d.id ? '' : d.id; render(); },
-  })));
-  // period stats
-  const days = Math.max(1, Math.ceil((end - a) / DAY));
-  const files = vids.length;
-  const firstByCreative = new Map();
-  for (const v of vids) if (v.d && !firstByCreative.has(`${v.t}|${v.k}`)) firstByCreative.set(`${v.t}|${v.k}`, v.d);
-  const minutes = [...firstByCreative.values()].reduce((x, y) => x + y, 0) / 60;
-  const stat = (k, v) => h('div', { class: 'stat' }, h('div', { class: 'k', text: k }), h('div', { class: 'v', text: v }));
-  $('stats').replaceChildren(
-    stat('В среднем за день', nf1.format(total / days)),
-    stat('Форматов на ролик', total ? nf1.format(files / total) : '—'),
-    stat('Минут видео', firstByCreative.size ? nf1.format(minutes) : '—'),
-  );
-}
-
-function renderPeople(vids, a, b) {
-  const data = state.data;
-  const names = new Set(vids.flatMap((v) => v.by));
-  for (const t of data.tasks) if (data.config.statuses.current.includes(t.status)) t.assignees.forEach((n) => names.add(n));
-  if (state.person) names.add(state.person);
-  const rows = [...names].map((n) => {
-    const mine = vids.filter((v) => v.by.includes(n));
-    return { n, videos: creatives(mine), tasks: new Set(mine.map((v) => v.t)).size };
-  }).sort((x, y) => y.videos - x.videos || x.n.localeCompare(y.n));
-  const max = Math.max(1, ...rows.map((r) => r.videos));
-  $('peopleRows').replaceChildren(...(rows.length ? rows.slice(0, 5).map((r) => levelRow({
-    label: r.n,
-    value: r.videos,
-    small: r.tasks ? `${r.tasks}${NBSP}${plural(r.tasks, W_TASKS)}` : '',
-    ratio: r.videos / max,
-    pressed: state.person === r.n,
-    title: state.person === r.n ? 'Снять фильтр' : `Показать только: ${r.n}`,
-    onclick: () => { state.person = state.person === r.n ? '' : r.n; render(); },
-  })) : [h('p', { class: 'empty', text: 'За этот период роликов нет' })]));
-}
-
-function renderPace(vids, a, end) {
-  const wd = Math.max(1, workdays(a, end));
-  const value = creatives(vids) / wd;
-  // scale: the busiest single day in the last 90 days
-  const today = startOfDay(new Date());
-  const perDay = new Map();
-  for (const v of state.data.videos) {
-    if (v.time < +today - 90 * DAY || !videoOk(v)) continue;
-    const k = startOfDay(new Date(v.time)).getTime();
-    const set = perDay.get(k) || new Set();
-    set.add(`${v.t}|${v.k}`);
-    perDay.set(k, set);
-  }
-  const max = niceMax(Math.max(value, ...[...perDay.values()].map((x) => x.size), 4));
-  const S = 420, c = S / 2, R1 = 196, R2 = 186, RA = 150;
-  const svg = s('svg', { viewBox: `0 0 ${S} ${S}`, 'aria-hidden': 'true' });
-  const start = (135 * Math.PI) / 180, sweep = (270 * Math.PI) / 180;
-  for (let i = 0; i <= 36; i++) {
-    const t = start + (sweep * i) / 36;
-    const major = i % 9 === 0;
-    const r0 = major ? R2 - 6 : R2, r1 = R1;
-    svg.append(s('line', { class: major ? 'tick-major' : 'tick-minor', x1: c + r0 * Math.cos(t), y1: c + r0 * Math.sin(t), x2: c + r1 * Math.cos(t), y2: c + r1 * Math.sin(t) }));
-  }
-  svg.append(s('circle', { class: 'track', cx: c, cy: c, r: RA }));
-  const f = Math.min(value / max, 1);
-  const tEnd = start + sweep * f;
-  const p = (t) => `${c + RA * Math.cos(t)} ${c + RA * Math.sin(t)}`;
-  if (f > 0.001) svg.append(s('path', { class: 'arc', d: `M${p(start)} A${RA} ${RA} 0 ${sweep * f > Math.PI ? 1 : 0} 1 ${p(tEnd)}` }));
-  svg.append(s('circle', { class: 'knob', cx: c + RA * Math.cos(tEnd), cy: c + RA * Math.sin(tEnd), r: 5 }));
-  svg.append(s('text', { class: 'scale', x: c + (R1 + 4) * Math.cos(start) - 18, y: c + (R1 + 4) * Math.sin(start) + 22, text: '0' }));
-  svg.append(s('text', { class: 'scale', x: c + (R1 + 4) * Math.cos(start + sweep) + 4, y: c + (R1 + 4) * Math.sin(start + sweep) + 22, text: nf.format(max) }));
-  const shown = Math.round(value * 10) / 10;
-  const unit = Number.isInteger(shown) ? plural(shown, W_VIDEOS) : 'ролика'; // fractions take the genitive singular
-  const center = h('div', { class: 'dial-center' },
-    h('div', { class: 'k', text: state.mode === 'day' ? 'за день' : 'в рабочий день' }),
-    h('div', { class: 'v', text: nf1.format(shown) }),
-    h('div', { class: 'u', text: unit }));
-  const dial = $('paceDial');
-  dial.title = `Шкала до ${nf.format(max)} — лучший день за последние 90 дней`;
-  dial.replaceChildren(svg, center);
-}
-
-function renderStatus() {
-  const { data } = state;
-  const order = data.config.statuses.order;
-  const cur = data.tasks.filter((t) => data.config.statuses.current.includes(t.status) && taskOk(t))
-    .sort((x, y) => order.indexOf(x.status) - order.indexOf(y.status) || (y.createdAt > x.createdAt ? 1 : -1));
-  $('currentCount').textContent = nf.format(cur.length);
-  // Task first and large, its status on the right and small (owner, 9 Nov).
-  const rows = cur.slice(0, 3).map((t) => h('div', { class: 'status-row' },
-    h('a', { class: 'v', href: t.url, target: '_blank', rel: 'noopener', text: t.name || 'Без названия' }),
-    h('span', { class: 'k', text: t.status })));
-  $('statusRows').replaceChildren(...(rows.length ? rows : [h('p', { class: 'status-empty', text: 'Сейчас задач в работе нет' })]));
-  // Fade the end only for names that really overflow; re-measure once web fonts replace the wider fallback.
-  const measure = () => { for (const v of $('statusRows').querySelectorAll('.v')) v.classList.toggle('fits', v.scrollWidth <= v.clientWidth + 1); };
-  requestAnimationFrame(measure);
-  document.fonts?.ready.then(measure);
-}
-
-function statusChip(status) {
-  if (!status) return h('span', { class: 'muted', text: 'без статуса' });
-  return h('span', { class: 'status-chip' + (status === 'In progress' ? ' live' : ''), text: status });
-}
-
-function renderTasks(vids, a, b) {
+function taskLists(a, b) {
   const { data } = state;
   const cfg = data.config;
-  // done in period: tasks with videos inside the period
   const per = new Map();
-  for (const v of vids) {
-    const e = per.get(v.t) || { files: 0, keys: new Set(), last: 0 };
-    e.files++; e.keys.add(v.k); e.last = Math.max(e.last, v.time);
-    per.set(v.t, e);
+  for (const v of videosIn(a, b)) {
+    if (!per.has(v.t)) per.set(v.t, []);
+    per.get(v.t).push(v);
   }
-  const done = [...per.entries()].map(([id, e]) => ({ t: data.taskById.get(id), videos: e.keys.size, files: e.files, last: e.last }))
-    .sort((x, y) => y.last - x.last);
+  const done = [...per].map(([id, list]) => ({ t: data.taskById.get(id), ...summarize(list) }));
   const current = data.tasks.filter((t) => cfg.statuses.current.includes(t.status) && taskOk(t))
-    .sort((x, y) => cfg.statuses.order.indexOf(x.status) - cfg.statuses.order.indexOf(y.status))
-    .map((t) => ({ t, videos: t.drive?.videos || 0, files: t.drive?.files || 0, last: t.drive?.lastAt ? Date.parse(t.drive.lastAt) : 0 }));
-  // tasks closed in the period (by deadline, else creation) whose folder has no videos
+    .map((t) => ({ t, ...summarize(data.videosByTask.get(t.id) || []) }));
+  // closed in the period (by deadline, else creation) and no video found in the folder
   const nolink = data.tasks.filter((t) => {
     if (!taskOk(t) || t.status !== 'Done' || (t.types.length && !t.types.includes('video'))) return false;
     const when = Date.parse(t.deadline ? t.deadline + 'T12:00:00' : t.createdAt);
     return when >= +a && when < +b && !(t.drive && t.drive.files);
-  }).map((t) => ({ t, videos: 0, files: 0, last: 0, why: !t.drive ? (t.deliverables ? 'ссылка не на Drive' : 'нет ссылки в Deliverables') : t.drive.ok === false ? 'папка недоступна' : t.drive.ok == null ? 'папка ещё не прочитана' : 'в папке нет видео' }));
+  }).map((t) => ({ t, ...summarize([]), why: !t.drive ? (t.deliverables ? 'ссылка не на Drive' : 'нет ссылки в Deliverables') : t.drive.ok === false ? 'папка недоступна' : t.drive.ok == null ? 'папка не прочитана' : 'в папке нет видео' }));
+  return { done, current, nolink };
+}
+const STATUS_ON = new Set(['In progress', 'Review']);
+const COLS = [
+  { key: 'name', label: 'Задача', w: 'minmax(168px, 1fr)', sort: 'name' },
+  { key: 'who', label: 'Моушен', w: 'max-content' },
+  { key: 'dir', label: 'Направление', w: 'max-content' },
+  { key: 'status', label: 'Статус', w: 'max-content', sort: 'status' },
+  { key: 'formats', label: 'Форматы', w: 'max-content' },
+  { key: 'videos', label: 'Ролики', w: 'max-content', sort: 'videos', r: true },
+  { key: 'last', label: 'Последний ролик', w: 'max-content', sort: 'last' },
+  { key: 'deadline', label: 'Дедлайн', w: 'max-content', sort: 'deadline' },
+  { key: 'open', label: 'Открыть', w: 'max-content', r: true },
+];
+const DEFAULT_SORT = { done: ['last', -1], current: ['status', 1], nolink: ['deadline', -1] };
+function sorter(key, dir) {
+  const order = state.data.config.statuses.order;
+  const cmp = {
+    name: (x, y) => (x.t.name || '').localeCompare(y.t.name || '', 'ru'),
+    status: (x, y) => order.indexOf(x.t.status) - order.indexOf(y.t.status),
+    videos: (x, y) => x.videos - y.videos || x.files - y.files,
+    last: (x, y) => x.last - y.last,
+    deadline: (x, y) => (x.t.deadline || '').localeCompare(y.t.deadline || ''),
+  }[key];
+  const missing = (r) => (key === 'deadline' ? !r.t.deadline : key === 'last' ? !r.last : key === 'status' ? !r.t.status : false);
+  // a row without the value goes last in both directions
+  return (x, y) => (missing(x) - missing(y)) || dir * cmp(x, y) || y.last - x.last || (y.t.createdAt > x.t.createdAt ? 1 : -1);
+}
+const ICON_NOTION = '<svg class="ico16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 3.75h7l4.25 4.25v11a1.25 1.25 0 0 1-1.25 1.25H7A1.25 1.25 0 0 1 5.75 19V5A1.25 1.25 0 0 1 7 3.75z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M13.75 3.75V8.25h4.5M9 12.75h6M9 16h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const ICON_FOLDER = '<svg class="ico16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3.75 7A1.25 1.25 0 0 1 5 5.75h4.2l2 2.25H19A1.25 1.25 0 0 1 20.25 9.25V17A1.25 1.25 0 0 1 19 18.25H5A1.25 1.25 0 0 1 3.75 17z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>';
+const prio = (p) => (p || '').replace(/[^\p{L}\s-]/gu, '').trim();
+const fit = (cls, text, extra = {}) => h('span', { class: `fit ${cls}`, 'data-fit': '', text, ...extra });
 
-  $('tabDoneN').textContent = nf.format(done.length);
-  $('tabCurrentN').textContent = nf.format(current.length);
-  $('tabNolinkN').textContent = nf.format(nolink.length);
+function renderTasksPage(a, b) {
+  const { data } = state;
+  const lists = taskLists(a, b);
+  const q = state.q.toLowerCase();
+  const match = (r) => !q || [r.t.name, ...r.t.apps, ...r.t.customers, ...r.t.assignees, data.dirLabel[r.t.direction]].join(' ').toLowerCase().includes(q);
+  const shown = Object.fromEntries(TABS.map((k) => [k, lists[k].filter(match)]));
+  $('nDone').textContent = nf.format(shown.done.length);
+  $('nCurrent').textContent = nf.format(shown.current.length);
+  $('nNolink').textContent = nf.format(shown.nolink.length);
   for (const btn of $('taskTabs').querySelectorAll('button')) btn.setAttribute('aria-selected', String(btn.dataset.tab === state.tab));
+  $('tcard').classList.toggle('is-joined', state.tab === TABS[0]);
 
-  const list = { done, current, nolink }[state.tab];
-  const limit = state.showAll ? list.length : 40;
-  const rows = list.slice(0, limit).map(({ t, videos, files, last, why }) => {
-    const folder = t.drive ? `https://drive.google.com/drive/folders/${t.drive.id}` : null;
+  const rows = shown[state.tab];
+  const [key, dir] = state.sort || DEFAULT_SORT[state.tab];
+  rows.sort(sorter(key, dir));
+
+  dropdowns.dirFilter.setOptions([{ value: '', label: 'Все направления' }, ...data.config.directions.map((d) => ({ value: d.id, label: d.label }))]);
+  dropdowns.dirFilter.setValue(state.direction);
+  dropdowns.personFilter.setOptions([{ value: '', label: 'Все моушены' }, ...data.people.filter(Boolean).map((n) => ({ value: n, label: n }))]);
+  dropdowns.personFilter.setValue(state.person);
+  if ($('taskSearch').value.trim() !== state.q) $('taskSearch').value = state.q;
+
+  const grid = $('tgrid');
+  grid.style.setProperty('--cols', COLS.map((c) => c.w).join(' '));
+  const head = h('div', { class: 'thead', role: 'row' }, ...COLS.map((c) => {
+    const on = c.sort === key;
+    const cell = h('span', { class: c.r ? 'r' : '', role: 'columnheader', 'aria-sort': on ? (dir > 0 ? 'ascending' : 'descending') : null });
+    if (!c.sort) { cell.textContent = c.label; return cell; }
+    cell.append(h('button', { class: 'th-sort' + (on ? ' is-on' : ''), type: 'button', onclick: () => {
+      const def = DEFAULT_SORT[state.tab];
+      const firstDir = c.sort === 'name' || c.sort === 'status' ? 1 : -1;
+      state.sort = [c.sort, on ? -dir : firstDir];
+      if (state.sort[0] === def[0] && state.sort[1] === def[1]) state.sort = null;
+      render();
+    } }, c.label, svg(`<svg class="th-arrow" viewBox="0 0 12 12" aria-hidden="true"><path d="${on && dir > 0 ? 'M3 7.5L6 4.5l3 3' : 'M3 4.5L6 7.5l3-3'}" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"/></svg>`)));
+    return cell;
+  }));
+
+  const body = rows.map((r) => {
+    const { t } = r;
     const meta = [t.apps.join(', '), t.types.join(', '), t.customers.length ? `заказчик ${t.customers.join(', ')}` : ''].filter(Boolean).join(SEP);
-    return h('tr', {},
-      h('td', {}, h('a', { class: 'task-name', href: t.url, target: '_blank', rel: 'noopener', text: t.name || 'Без названия' }), meta ? h('span', { class: 'task-meta', text: meta }) : null),
-      h('td', { 'data-k': 'Моушен:', text: t.assignees.length ? t.assignees.join(', ') : '—' }),
-      h('td', { 'data-k': 'Направление:', title: `Определено: ${t.directionReason}`, text: data.directionLabel[t.direction] || t.direction }),
-      h('td', { 'data-k': 'Статус:' }, statusChip(t.status)),
-      h('td', { class: 'num', 'data-k': 'Ролики:' }, why ? h('span', { class: 'muted', text: why }) : folder ? h('a', { href: folder, target: '_blank', rel: 'noopener', title: 'Открыть папку на Drive', text: nf.format(videos) }) : '—'),
-      h('td', { class: 'num', 'data-k': 'Файлы:', text: why ? '' : nf.format(files) }),
-      h('td', { 'data-k': 'Последний ролик:', class: last ? '' : 'muted', text: last ? fmtDate(new Date(last).toISOString()) : '—' }),
+    const people = t.assignees.length ? t.assignees : r.by;
+    const folder = t.drive ? `https://drive.google.com/drive/folders/${t.drive.id}` : null;
+    const d = t.deadline ? Date.parse(t.deadline + 'T12:00:00') : 0;
+    const status = t.status || 'Без статуса';
+    return h('div', { class: 'tr', role: 'row' },
+      h('div', { class: 'td c-name', role: 'cell' },
+        h('a', { class: 'fit strong t-name', 'data-fit': '', href: t.url, target: '_blank', rel: 'noopener', text: t.name || 'Без названия' }),
+        meta ? fit('cap', meta) : null),
+      h('div', { class: 'td person', role: 'cell', 'data-k': 'Моушен' },
+        people.length ? h('span', { class: 'av', text: initials(people[0]), 'aria-hidden': 'true' }) : null,
+        h('span', { class: 'p-txt' }, people.length ? people[0] : h('span', { class: 'muted', text: 'Без исполнителя' }),
+          people.length > 1 ? h('span', { class: 'cap', text: people.slice(1).join(', ') }) : null)),
+      h('div', { class: 'td', role: 'cell', 'data-k': 'Направление' },
+        h('span', { class: 'dir' }, h('i', { style: `--c:${DIR_COLOR[t.direction]}` }), data.dirLabel[t.direction] || t.direction),
+        t.directionReason ? fit('cap reason', t.directionReason, { title: `Определено: ${t.directionReason}` }) : null),
+      h('div', { class: 'td', role: 'cell', 'data-k': 'Статус' }, h('span', { class: `chip ${STATUS_ON.has(t.status) ? 'chip-ok' : 'chip-n'}`, text: status })),
+      h('div', { class: 'td', role: 'cell', 'data-k': 'Форматы' }, r.formats.length ? fit('formats', r.formats.join(', ')) : h('span', { class: 'muted', text: '—' })),
+      h('div', { class: 'td r', role: 'cell', 'data-k': 'Ролики' },
+        r.why ? h('span', { class: 'muted', text: r.why }) : h('span', { class: 'num' }, h('b', { text: nf.format(r.videos) }), h('span', { class: 'cap', text: `${nf.format(r.files)} ${plural(r.files, W_FILES)}` }))),
+      h('div', { class: 'td', role: 'cell', 'data-k': 'Последний ролик' },
+        r.last ? fmtDate(r.last) : h('span', { class: 'muted', text: '—' }),
+        r.first && startOfDay(new Date(r.first)) < startOfDay(new Date(r.last)) ? h('span', { class: 'cap', text: `первый ${fmtDate(r.first)}` }) : null),
+      h('div', { class: 'td', role: 'cell', 'data-k': 'Дедлайн' },
+        d ? fmtDate(d) : h('span', { class: 'muted', text: '—' }),
+        prio(t.priority) ? h('span', { class: 'cap', text: prio(t.priority) }) : null),
+      h('div', { class: 'td r', role: 'cell', 'data-k': 'Открыть' },
+        h('span', { class: 'acts' },
+          h('a', { class: 'ibtn', href: t.url, target: '_blank', rel: 'noopener', 'aria-label': 'Открыть задачу в Notion', title: 'Задача в Notion' }, svg(ICON_NOTION)),
+          folder ? h('span', { class: 'sep', 'aria-hidden': 'true' }) : null,
+          folder ? h('a', { class: 'ibtn', href: folder, target: '_blank', rel: 'noopener', 'aria-label': 'Открыть папку на Drive', title: 'Папка на Drive' }, svg(ICON_FOLDER)) : null)),
     );
   });
-  if (list.length > limit) {
-    rows.push(h('tr', { class: 'more-row' }, h('td', { colspan: 7 }, h('button', { class: 'btn-ghost', type: 'button', onclick: () => { state.showAll = true; render(); }, text: `Показать все ${nf.format(list.length)}` }))));
-  }
-  $('taskRows').replaceChildren(...rows);
-  $('tasksEmpty').hidden = list.length > 0;
-  $('tasksEmpty').textContent = state.tab === 'current' ? 'Сейчас задач в работе нет' : state.tab === 'nolink' ? 'Все закрытые задачи периода нашли свои ролики' : 'За этот период роликов нет';
+  grid.replaceChildren(head, ...body);
+  const empty = $('tEmpty');
+  empty.hidden = rows.length > 0;
+  empty.textContent = q && lists[state.tab].length ? 'По этому запросу задач нет'
+    : state.tab === 'current' ? 'Сейчас задач в работе нет'
+    : state.tab === 'nolink' ? `Все закрытые задачи периода нашли свои${NBSP}ролики` : 'За этот период роликов нет';
 }
 
-function renderChecks() {
-  const { data } = state;
-  const c = data.checks;
-  const parts = [
-    data.sources.notion === 'api' ? `Notion: ${nf.format(c.tasks)} ${plural(c.tasks, W_TASKS)}` : `Notion: снимок от ${fmtStamp(data.sources.notionExportedAt)}, ${nf.format(c.tasks)} ${plural(c.tasks, W_TASKS)}`,
-    data.sources.drive === 'none'
-      ? 'Drive ещё не подключён'
-      : `Drive: прочитано ${nf.format(c.driveRootsRead)} из ${nf.format(c.driveFolders ?? c.withDriveLink)} папок${c.driveRootsFailed ? `, недоступно ${nf.format(c.driveRootsFailed)}` : ''}${data.sources.drive === 'snapshot' ? ` (снимок от ${fmtStamp(data.sources.driveFetchedAt)})` : ''}`,
-    `найдено ${nf.format(c.videosFound)} ${plural(c.videosFound, W_FILES)} в ${nf.format(c.tasksWithVideos)} ${c.tasksWithVideos % 10 === 1 && c.tasksWithVideos % 100 !== 11 ? 'задаче' : 'задачах'}`,
-  ];
-  $('checks').textContent = parts.join(SEP) + '. Ролик — один креатив во всех форматах, дата ролика — когда файл появился на Drive.';
+// the log shows as many rows as its card has room for: the page never scrolls on a desktop screen
+function fitLog() {
+  const box = $('events');
+  const rows = [...box.querySelectorAll('.ev')];
+  rows.forEach((r) => { r.hidden = false; });
+  if (!matchMedia('(min-width: 1200px) and (min-height: 640px)').matches) return;
+  const more = box.querySelector('.ev-more');
+  const room = box.clientHeight;
+  let used = more ? more.offsetHeight + 8 : 0, n = 0;
+  for (const r of rows) {
+    used += r.offsetHeight;
+    if (used > room) break;
+    n++;
+  }
+  rows.forEach((r, i) => { r.hidden = i >= Math.max(1, n); });
 }
 
 function renderChrome() {
   const { data } = state;
-  $('appTitle').textContent = data.config.title;
   $('notionLink').href = data.config.notionUrl;
   $('driveLink').href = data.config.driveRootUrl;
-  // Freshness is the age of the oldest source: a rebuild from snapshots is not an update.
-  const live = data.sources.notion === 'api' && data.sources.drive === 'live';
-  const stamps = [data.sources.notion === 'api' ? data.generatedAt : data.sources.notionExportedAt,
-    data.sources.drive === 'live' ? data.generatedAt : data.sources.driveFetchedAt].filter(Boolean).sort();
-  const freshAt = stamps[0] || data.generatedAt;
-  document.querySelector('.updated-label').textContent = live ? 'Обновлено' : 'Данные на';
-  $('updatedAt').textContent = fmtStamp(freshAt);
-  $('updatedAt').title = live ? 'Notion и Drive прочитаны при последней синхронизации' : 'Часть данных взята из последнего снимка — подключи ключи синхронизации';
-  const d = new Date();
-  $('today').textContent = `${cap(fmtWeekday.format(d))}, ${fmtDayMonth.format(d)}`;
-  $('dataAge').replaceChildren('данные', h('br'), fmtTime.format(new Date(freshAt)));
-  dropdowns.directionFilter.setOptions([{ value: '', label: 'Все' }, ...data.config.directions.map((x) => ({ value: x.id, label: x.label }))]);
-  dropdowns.personFilter.setOptions([{ value: '', label: 'Все' }, ...data.people.filter(Boolean).map((n) => ({ value: n, label: n }))]);
 }
 
-/* ───────── wire up ───────── */
-function wire() {
-  $('periodTabs').addEventListener('click', (e) => {
-    const m = e.target.closest('button')?.dataset.mode;
-    if (m) { state.mode = m; state.showAll = false; render(); }
-  });
-  $('prevPeriod').addEventListener('click', () => { state.anchor = shift(state.mode, startOf(state.mode, state.anchor), -1); state.showAll = false; render(); });
-  $('nextPeriod').addEventListener('click', () => {
-    const next = shift(state.mode, startOf(state.mode, state.anchor), 1);
-    const today = startOfDay(new Date());
-    state.anchor = +startOf(state.mode, today) === +next ? today : next;
-    state.showAll = false; render();
-  });
-  dropdown($('directionFilter'), (v) => { state.direction = v; state.showAll = false; render(); });
-  dropdown($('personFilter'), (v) => { state.person = v; state.showAll = false; render(); });
-  $('taskTabs').addEventListener('click', (e) => {
-    const t = e.target.closest('button')?.dataset.tab;
-    if (t) { state.tab = t; state.showAll = false; render(); }
-  });
-  document.querySelector('[data-tab-link="current"]').addEventListener('click', () => { state.tab = 'current'; render(); });
-  let rt;
-  addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(render, 120); });
-}
+/* ───────── wire ───────── */
+PHONE.addEventListener('change', () => { placeRange(); if (state.view === 'dash') fitLog(); });
+$('periodTabs').addEventListener('click', (e) => {
+  const m = e.target.closest('.ptab-btn')?.dataset.mode;
+  if (m) { state.mode = m; render(); }
+});
+$('prevPeriod').addEventListener('click', () => { state.anchor = shift(state.mode, startOf(state.mode, state.anchor), -1); render(); });
+$('nextPeriod').addEventListener('click', () => {
+  const next = shift(state.mode, startOf(state.mode, state.anchor), 1);
+  state.anchor = +startOf(state.mode, new Date()) === +next ? startOfDay(new Date()) : next;
+  render();
+});
+$('backBtn').addEventListener('click', closeTasks);
+// the browser's own back and forward move between the pages; the period and filters stay as they are now
+addEventListener('popstate', () => { readView(); render(); });
+$('taskTabs').addEventListener('click', (e) => {
+  const t = e.target.closest('button')?.dataset.tab;
+  if (t && t !== state.tab) { state.tab = t; state.sort = null; render(); }
+});
+$('taskSearch').addEventListener('input', (e) => { state.q = e.target.value.trim(); render(); });
+dropdown($('dirFilter'), (v) => { state.direction = v; render(); });
+dropdown($('personFilter'), (v) => { state.person = v; render(); });
+addEventListener('resize', () => { if (state.view === 'dash') fitLog(); });
 
 (async function main() {
   readHash();
-  wire();
+  placeRange(); // the range stands in its tab before the data comes
   try {
-    state.data = await load(true);
+    state.data = await load();
   } catch (e) {
-    $('checks').textContent = `Не удалось загрузить данные: ${e.message}`;
+    $('sheet').prepend(h('p', { class: 'load-error', text: `Не удалось загрузить данные: ${e.message}` }));
     $('app').removeAttribute('aria-busy');
     return;
   }

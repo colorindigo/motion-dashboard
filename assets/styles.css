@@ -50,16 +50,18 @@ p, h1, h2 { margin: 0; }
 /* top: the period tabs grow out of the sheet (folder tabs, 18 round with a concave 18 corner), the open one holds the
    range; the numbers stand on the right */
 .dash-top { position: relative; display: flex; align-items: flex-end; gap: 24px; padding-top: 32px; }
-.ptabs { flex: none; display: flex; align-items: flex-end; }
+.brand { flex: none; align-self: flex-end; height: 64px; display: flex; align-items: center; padding-left: 4px; color: var(--ink); }
+.brand .logo { display: block; width: 203px; height: 20px; }
+.ptabs { flex: none; margin-left: auto; display: flex; align-items: flex-end; }
 .ptab { position: relative; flex: none; height: 64px; border-radius: 18px 18px 0 0; display: flex; align-items: center; }
 .ptab-btn { height: 100%; padding: 0 28px; font: 500 16px/24px var(--font); color: var(--text-2); white-space: nowrap; transition: color .2s; }
 .ptab-btn:hover { color: var(--ink); }
 .ptab-btn:focus-visible { outline-offset: -6px; border-radius: 14px; }
 .ptab.is-on { background: var(--tint); padding-right: 8px; }
 .ptab.is-on .ptab-btn { padding-right: 16px; color: var(--ink); font-weight: 600; cursor: default; }
-.ptab.is-on::after, .ptab.is-on:not(:first-child)::before { content: ""; position: absolute; bottom: 0; width: 18px; height: 18px; pointer-events: none; }
-.ptab.is-on::after { right: -18px; background: radial-gradient(circle at 100% 0, transparent 17.5px, var(--tint) 18px); }
-.ptab.is-on:not(:first-child)::before { left: -18px; background: radial-gradient(circle at 0 0, transparent 17.5px, var(--tint) 18px); }
+.ptab.is-on::before, .ptab.is-on:not(:last-child)::after { content: ""; position: absolute; bottom: 0; width: 18px; height: 18px; pointer-events: none; }
+.ptab.is-on::before { left: -18px; background: radial-gradient(circle at 0 0, transparent 17.5px, var(--tint) 18px); }
+.ptab.is-on:not(:last-child)::after { right: -18px; background: radial-gradient(circle at 100% 0, transparent 17.5px, var(--tint) 18px); }
 /* the range: big arrow buttons in a white track, the period between them */
 .range { display: flex; align-items: center; height: 48px; padding: 2px; border-radius: 12px; background: var(--surface); }
 .range.is-moved { animation: range-in .3s var(--ease-enter); } /* only when it moves to another tab: on load it is just there */
@@ -76,7 +78,7 @@ p, h1, h2 { margin: 0; }
 
 /* the sheet and its grid */
 .dash-sheet { position: relative; padding: 16px; border-radius: 24px; background: var(--tint); transition: opacity .2s; }
-.dash-sheet.is-joined { border-top-left-radius: 0; }
+.dash-sheet.is-joined { border-top-right-radius: 0; } /* the last tab (Год) open: the sheet's corner under it is square */
 .dash-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
 .row-a { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .row-b { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
@@ -305,7 +307,8 @@ p, h1, h2 { margin: 0; }
 /* narrow: period first, the tab under it so it still grows out of the sheet */
 @media (max-width: 800px) {
   .dash-top { flex-wrap: wrap; gap: 0; padding-top: 16px; }
-  .ptabs { width: 100%; }
+  .brand { width: 100%; height: auto; padding: 0 4px 20px; }
+  .ptabs { width: 100%; margin-left: 0; }
   .ptab { flex: 1; min-width: 0; height: 52px; }
   .ptab.is-on { padding-right: 0; }
   .ptab-btn, .ptab.is-on .ptab-btn { width: 100%; padding: 0 4px; }

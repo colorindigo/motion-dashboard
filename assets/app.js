@@ -227,8 +227,8 @@ function placeRange() {
     range.classList.remove('is-moved');
     if (moved) { void range.offsetWidth; range.classList.add('is-moved'); }
   }
-  // the first tab open: the sheet's own corner under it is square
-  $('sheet').classList.toggle('is-joined', state.mode === 'day' && !PHONE.matches);
+  // the last tab open (the tabs stand on the right): the sheet's own corner under it is square
+  $('sheet').classList.toggle('is-joined', state.mode === 'year' && !PHONE.matches);
 }
 
 function renderDashboard(a, b, now, isCurrent, end) {
@@ -380,16 +380,19 @@ function renderLog(vids) {
   const { data } = state;
   const per = new Map();
   for (const v of vids) {
-    const e = per.get(v.t) || { keys: new Set(), last: 0 };
+    const e = per.get(v.t) || { keys: new Set(), by: new Set(), last: 0 };
     e.keys.add(v.k); e.last = Math.max(e.last, v.time);
+    for (const n of v.by) e.by.add(n);
     per.set(v.t, e);
   }
-  const list = [...per.entries()].map(([id, e]) => ({ t: data.taskById.get(id), n: e.keys.size, last: e.last })).sort((x, y) => y.last - x.last);
+  const list = [...per.entries()].map(([id, e]) => ({ t: data.taskById.get(id), n: e.keys.size, by: [...e.by], last: e.last })).sort((x, y) => y.last - x.last);
   const today = startOfDay(new Date());
-  const rows = list.slice(0, LOG_ROWS).map(({ t, n, last }) => {
-    const who = t.assignees[0] || '';
+  const rows = list.slice(0, LOG_ROWS).map(({ t, n, by, last }) => {
+    // no Assign in Notion: whoever put the files on Drive
+    const people = t.assignees.length ? t.assignees : by;
+    const who = people[0] || '';
     const when = new Date(last);
-    const meta = [t.assignees.join(', ') || 'без исполнителя', data.dirLabel[t.direction], `${nf.format(n)} ${plural(n, W_VIDEOS)}`].join(SEP);
+    const meta = [people.join(', ') || 'без исполнителя', data.dirLabel[t.direction], `${nf.format(n)} ${plural(n, W_VIDEOS)}`].join(SEP);
     const href = t.drive ? `https://drive.google.com/drive/folders/${t.drive.id}` : t.url;
     return h('a', { class: 'ev', href, target: '_blank', rel: 'noopener', title: t.drive ? 'Открыть папку с роликами' : 'Открыть задачу в Notion' },
       h('span', { class: 'ev-av', text: initials(who), 'aria-hidden': 'true' }),

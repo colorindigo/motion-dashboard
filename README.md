@@ -4,7 +4,7 @@
 сопоставленные с роликами на Google Drive: сколько роликов сделано за день, неделю, месяц и год,
 всего и по каждому моушену, с разбивкой на баинг, виралку, лабу и внутренние проекты.
 
-**Сайт:** https://colorindigo.github.io/motion-dashboard/
+**Сайт:** https://colorindigo.github.io/motion-dashboard/ · второй вариант по дашборду Vault Custody: https://colorindigo.github.io/motion-dashboard/v2/
 
 ## Как считается
 
@@ -80,6 +80,7 @@ python3 -m http.server 4180
 | Путь | Что это |
 |---|---|
 | `index.html`, `assets/` | дашборд, чистые HTML/CSS/JS |
+| `v2/` | второй вариант: каркас дашборда Vault Custody v2.2 без бокового меню, те же данные |
 | `config.json` | id базы и поля Notion, правила направлений, люди, папки-исключения |
 | `scripts/sync.mjs` | синхронизация: Notion + Drive → `data/data.json` |
 | `scripts/build.mjs` | расчёт: задачи, ролики, направления (без сети) |

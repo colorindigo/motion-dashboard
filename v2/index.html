@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Motion Design · v2</title>
+  <meta name="description" content="Ролики моушен-дизайнеров по задачам Notion: день, неделя, месяц, год. Второй вариант по дашборду Vault Custody.">
+  <link rel="icon" href="../assets/icons/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="main" id="app" aria-busy="true">
+    <section class="dash">
+      <!-- top: the folder tab grows out of the sheet, a white slot, the period on the right -->
+      <header class="dash-top">
+        <div class="dash-tab">
+          <span class="dt-label" id="scopeLabel">Все ролики</span>
+          <span class="dt-value" id="tabValue">—</span>
+          <span class="dt-cap" id="tabCap">—</span>
+        </div>
+        <a class="dash-slot" href="../" id="fullLink">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3.75" y="3.75" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.5"/><rect x="13.25" y="3.75" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.5"/><rect x="3.75" y="13.25" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.5"/><rect x="13.25" y="13.25" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.5"/></svg>
+          Подробная версия
+        </a>
+        <div class="dash-period">
+          <div class="dash-status">
+            <span class="pnav">
+              <button class="pbtn" id="prevPeriod" type="button" aria-label="Предыдущий период"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14.5 6l-6 6 6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+              <span id="periodLabel" aria-live="polite">—</span>
+              <button class="pbtn" id="nextPeriod" type="button" aria-label="Следующий период"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9.5 6l6 6-6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            </span>
+            <span class="updated" id="updated">—</span>
+          </div>
+          <div class="segctl" role="tablist" aria-label="Период" id="periodTabs">
+            <button class="seg-item" role="tab" data-mode="day">День</button>
+            <button class="seg-item" role="tab" data-mode="week">Неделя</button>
+            <button class="seg-item" role="tab" data-mode="month">Месяц</button>
+            <button class="seg-item" role="tab" data-mode="year">Год</button>
+          </div>
+        </div>
+      </header>
+
+      <!-- the sheet: lavender board with white plates -->
+      <div class="dash-sheet">
+        <div class="dash-grid">
+          <div class="row-a">
+            <article class="bcard">
+              <div class="bhead">
+                <div class="bhead-txt"><h2 class="b-title">Ролики</h2><p class="b-cap" id="aCap">—</p></div>
+                <a class="b-open" id="driveLink" href="#" target="_blank" rel="noopener">Drive<svg class="ico16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9.5 6l6 6-6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+              </div>
+              <div class="bbody">
+                <div class="metric"><span class="m-value" id="aValue">—</span><span class="m-cap" id="aSub">—</span></div>
+                <div class="strip">
+                  <div class="split" id="split" role="img"></div>
+                  <div class="legend" id="splitLegend"></div>
+                </div>
+              </div>
+            </article>
+
+            <article class="bcard">
+              <div class="bhead">
+                <div class="bhead-txt"><h2 class="b-title" id="bTitle">По дням</h2><p class="b-cap" id="bCap">—</p></div>
+              </div>
+              <div class="bbody">
+                <div class="metric"><span class="m-value" id="bValue">—</span><span class="m-cap" id="bSub">—</span></div>
+                <div class="strip">
+                  <div class="bars" id="bars"></div>
+                  <div class="strip-ends"><span id="barsFrom">—</span><span id="barsTo">—</span></div>
+                </div>
+              </div>
+            </article>
+
+            <article class="bcard">
+              <div class="bhead">
+                <div class="bhead-txt"><h2 class="b-title">В работе</h2><p class="b-cap">Задачи, которые сейчас не&nbsp;закрыты</p></div>
+                <a class="b-open" id="notionLink" href="#" target="_blank" rel="noopener">Notion<svg class="ico16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9.5 6l6 6-6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+              </div>
+              <div class="bbody">
+                <div class="metric"><span class="m-value" id="cValue">—</span><span class="m-cap" id="cSub">—</span></div>
+                <div class="worklist" id="worklist"></div>
+              </div>
+            </article>
+          </div>
+
+          <div class="row-b">
+            <article class="bcard">
+              <div class="bhead">
+                <div class="bhead-txt"><h2 class="b-title">Направления</h2><p class="b-cap">Плитка оставляет на&nbsp;странице одно&nbsp;направление</p></div>
+              </div>
+              <div class="tiles" id="dirTiles"></div>
+            </article>
+
+            <article class="bcard">
+              <div class="bhead">
+                <div class="bhead-txt"><h2 class="b-title">Моушены</h2><p class="b-cap">Ролики и&nbsp;задачи за&nbsp;период</p></div>
+              </div>
+              <div class="tiles" id="personTiles"></div>
+            </article>
+          </div>
+
+          <article class="bcard dc-log">
+            <div class="bhead">
+              <div class="bhead-txt"><h2 class="b-title">Последние ролики</h2><p class="b-cap">Задачи, в&nbsp;которых появились&nbsp;ролики</p></div>
+            </div>
+            <div class="events" id="events"></div>
+          </article>
+        </div>
+      </div>
+      <p class="foot" id="foot"></p>
+    </section>
+  </main>
+  <div class="tooltip" id="tooltip" role="status" hidden></div>
+  <script src="app.js" type="module"></script>
+</body>
+</html>
